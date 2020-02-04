@@ -68,23 +68,33 @@ def generatePatchSO(compiler,patchfile,working_dir):
 
 
 def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list):
-    modifyme = lief.parse(inputbin)
     # currently developed with assumption that functions being patched exist in input binary image
     # and not an external dynamic shared object/library
     #imported_libs = modifyme.imports
+    lief.Logger.enable()
+    lief.Logger.set_level(lief.LOGGING_LEVEL.DEBUG)
+    modifyme = lief.parse(inputbin)
     hookme = lief.parse(hook_file)
     if not modifyme:
         print("lief.parse({}) failed for some reason".format(inputbin))
     if not hookme:
         print("lief.parse({}) failed for some reason".format(hook_file))
         raise
-    added_segment = modifyme.add(hookme.segments[0])
     success = True
     for fn in override_functions:
         try:
             my_fn = hookme.get_symbol(fn)
-            my_fn_addr = added_segment.virtual_address + my_fn.value
-            modifyme.patch_pltgot(fn,my_fn_addr)
+            their_fn = modifyme.get_symbol(fn)
+            if their_fn.imported:
+                print("Symbol is imported - skipping function {}".format(fn))
+                continue
+            my_code = hookme.segment_from_virtual_address(my_fn.value) # returns Segment
+            added_segment = modifyme.add(segment=my_code)
+            print("Hook inserted at VA: 0x{:06x}".format(added_segment.virtual_address))
+            new_offset = my_fn.value-my_code.virtual_address
+            new_addr = added_segment.virtual_address + new_offset
+            print(f"Changing {their_fn.name}!{their_fn.value:x} -> {their_fn.name}!{new_addr:x}")
+            their_fn.value = new_addr
         except:
             print("ERROR: Couldn't find function '{}' in '{}'".format(fn,inputbin))
             success = False
