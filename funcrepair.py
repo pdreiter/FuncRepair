@@ -53,7 +53,7 @@ def generatePatchSO(compiler,patchfile,working_dir):
     hook_filename = "hook"
     
     status = -1
-    compile_command='{} -nostdlib -nodefaultlibs -fPIC -Wl,-shared {} -o {}'.format(
+    compile_command='{} -Wl,-T script.ld -fno-stack-protector -nostdlib -nodefaultlibs -fPIC -Wl,-shared {} -o {}'.format(
                     compiler,patchfile,hook_filename)
     try:
        proc= subprocess.Popen(shlex.split(compile_command),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -67,14 +67,15 @@ def generatePatchSO(compiler,patchfile,working_dir):
     return status,"{0}/{1}".format(working_dir,hook_filename)
 
 
+
 def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list):
     # currently developed with assumption that functions being patched exist in input binary image
     # and not an external dynamic shared object/library
     #imported_libs = modifyme.imports
-    lief.Logger.enable()
-    lief.Logger.set_level(lief.LOGGING_LEVEL.DEBUG)
-    modifyme = lief.parse(inputbin)
-    hookme = lief.parse(hook_file)
+    #lief.Logger.enable()
+    #lief.Logger.set_level(lief.LOGGING_LEVEL.DEBUG)
+    modifyme = lief.ELF.parse(inputbin)
+    hookme = lief.ELF.parse(hook_file)
     if not modifyme:
         print("lief.parse({}) failed for some reason".format(inputbin))
     if not hookme:
@@ -82,23 +83,39 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list
         raise
     success = True
     for fn in override_functions:
+        my_fn=None
+        their_fn=None
         try:
-            my_fn = hookme.get_symbol(fn)
-            their_fn = modifyme.get_symbol(fn)
-            if their_fn.imported:
-                print("Symbol is imported - skipping function {}".format(fn))
-                continue
-            my_code = hookme.segment_from_virtual_address(my_fn.value) # returns Segment
-            added_segment = modifyme.add(segment=my_code)
-            print("Hook inserted at VA: 0x{:06x}".format(added_segment.virtual_address))
-            new_offset = my_fn.value-my_code.virtual_address
-            new_addr = added_segment.virtual_address + new_offset
-            print(f"Changing {their_fn.name}!{their_fn.value:x} -> {their_fn.name}!{new_addr:x}")
-            their_fn.value = new_addr
-        except:
-            print("ERROR: Couldn't find function '{}' in '{}'".format(fn,inputbin))
+            #my_fn = hookme.get_section(fn)
+            my_funcsym = hookme.get_symbol(fn)
+            my_fn = hookme.section_from_virtual_address(my_funcsym.value)
+        except Exception as e:
+            print("ERROR: Couldn't find function '{}' in '{}'".format(fn,"hook"))
+            print("looked for '{}' in '{}'".format(my_funcsym.name,"hook"))
+            print("Tried to find '{}' in '{}'".format(my_funcsym.value,"hook"))
+            print(e)
             success = False
-            pass
+            raise e
+        try:
+            their_funcsym = modifyme.get_symbol(fn)
+            their_fn = modifyme.section_from_virtual_address(their_funcsym.value)
+        except Exception as e:
+            print("ERROR: Couldn't find function '{}' in '{}'".format(fn,inputbin))
+            print("looked for '{}' in '{}'".format(their_funcsym.name,inputbin))
+            print("Tried to find '{}' in '{}'".format(their_funcsym.value,inputbin))
+            print(e)
+            success = False
+            raise e
+        if success:
+            if len(my_fn.content) > len(their_fn.content):
+                extendedby=len(my_fn.content)-len(their_fn.content)
+                print("Extended section by {extendedby}")
+                modifyme.extend(their_fn,extendedby)
+            print("my function: "+str([hex(x) for x in my_fn.content]))
+            print("their function: "+str([hex(x) for x in their_fn.content]))
+            their_fn.content = my_fn.content
+            print("replaced function: "+str([hex(x) for x in their_fn.content]))
+
     print("Creating output : '{}'".format(outputbin))
     modifyme.write(outputbin)    
     return not success
