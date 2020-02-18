@@ -8,7 +8,7 @@ purpose: extract set of functions from binary and patch with external input file
 
 import lief
 import argparse
-import os
+import os,copy
 default_cwd=os.path.realpath(".")
 default_src=default_cwd
 
@@ -66,6 +66,10 @@ def generatePatchSO(compiler,patchfile,working_dir):
     os.chdir(orig_dir)
     return status,"{0}/{1}".format(working_dir,hook_filename)
 
+def inject_code(bad_binary:lief.Binary,address:int,new_code:bytearray):
+    # TODO PDREITER
+    return bad_binary.patch_address(address,new_code),len(bytearray)
+
 
 
 def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list):
@@ -107,14 +111,39 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list
             success = False
             raise e
         if success:
-            if len(my_fn.content) > len(their_fn.content):
-                extendedby=len(my_fn.content)-len(their_fn.content)
+            # WRONG APPROACH: TRIED: 1) Updating existing Section -> output elf does notrecognize address
+            # TRIED: 2) Removing original Section and Adding new section -> SEGFAULT @ address 0x2
+            # TRIED: 3) patch_address WORKS (IF section size is smaller??)
+            # TRYING:4) manipulating section size patch_address WORKS (IF section size is smaller??)
+            print("my section => {}".format(my_fn))
+            print("my section length = {}".format(len(my_fn.content)))
+            print("my section name for function '{}' => {}".format(fn,len(my_fn.name)))
+            print("my symbol for function '{}' => [{}]".format(fn,my_funcsym))
+            print("my symbol.size for function '{}' => [{}]".format(fn,my_funcsym.size))
+            print("their section => {}".format(their_fn))
+            print("their section length = {}".format(len(their_fn.content)))
+            print("their section name for function '{}' => {}".format(fn,len(their_fn.name)))
+            print("their symbol for function '{}' => [{}]".format(fn,their_funcsym))
+            print("their symbol.size for function '{}' => [{}]".format(fn,their_funcsym.size))
+            if my_funcsym.size > their_funcsym.size:
+                #extendedby=len(my_fn.content)-len(their_fn.content)
+                extendedby = my_funcsym.size - their_funcsym.size
                 print("Extended section by {extendedby}")
                 modifyme.extend(their_fn,extendedby)
-            print("my function: "+str([hex(x) for x in my_fn.content]))
+            their_fn.size = len(my_fn.content)
+            modifyme.patch_address(their_funcsym.value,my_fn.content)
+            #print("my function: "+str([hex(x) for x in my_fn.content]))
             print("their function: "+str([hex(x) for x in their_fn.content]))
-            their_fn.content = my_fn.content
-            print("replaced function: "+str([hex(x) for x in their_fn.content]))
+            #their_fn.content = my_fn.content
+            #print("replaced function: "+str([hex(x) for x in their_fn.content]))
+            #new_section = lief.ELF.Section()
+            #new_section.name = fn
+            #new_section.type = their_fn.type
+            #new_section.content = copy.deepcopy(my_fn.content)
+            #new_section.alignment = their_fn.alignment
+            #modifyme.concrete.remove(their_fn)
+            #updated_section = modifyme.add(new_section,True)
+
 
     print("Creating output : '{}'".format(outputbin))
     modifyme.write(outputbin)    
