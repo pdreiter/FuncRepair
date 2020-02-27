@@ -579,11 +579,11 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list
     #lief.Logger.enable()
     #lief.Logger.set_level(lief.LOGGING_LEVEL.DEBUG)
     modifyme = lief.ELF.parse(inputbin)
-    orig_dir = os.path.dirname(os.path.realpath(inputbin))
-    orig_file = os.path.basename(os.path.realpath(inputbin))
-    inputbin=orig_dir+"/tmp."+orig_file
-    modifyme.write(inputbin)    
-    modifyme = lief.ELF.parse(inputbin)
+    #orig_dir = os.path.dirname(os.path.realpath(inputbin))
+    #orig_file = os.path.basename(os.path.realpath(inputbin))
+    #inputbin=orig_dir+"/tmp."+orig_file
+    #modifyme.write(inputbin)    
+    #modifyme = lief.ELF.parse(inputbin)
     hookme = lief.ELF.parse(hook_file)
     if not modifyme:
         print("lief.parse({}) failed for some reason".format(inputbin))
