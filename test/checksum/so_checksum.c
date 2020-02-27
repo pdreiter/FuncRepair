@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "patch_ex2.h"
 
-char checksum(char *s)
+char mchecksum(char *s)
 {
    printf("original checksum\n");
     signed char sum = -1;
@@ -18,8 +19,7 @@ char checksum(char *s)
 
 
 int main(int argc, char **argv) {
-  printf("do_checksum:\n");
-  fflush(stdout);
+  printf("checksum\n");
   if (argc != 2) {
     printf("Usage: %s <string> \n", argv[0]);
     exit(-1);
