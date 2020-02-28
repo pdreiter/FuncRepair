@@ -6,7 +6,7 @@ I_DIRS=$(patsubst %, -I%, $(IDIR))
 CFLAGS=
 HOOK_CFLAGS=-Wl,-T script.ld -fno-stack-protector -nostdlib -nodefaultlibs -fPIC -Wl,-shared 
 
-FUNCREP="../../funcrepair.py"
+FUNCREP="../../funcinsert.py"
 
 #SDIR=src
 #ODIR=obj
@@ -55,10 +55,10 @@ so_checksum_obj:
 	objdump --disassemble --all -j .plt.got ./so_checksum > so_checksum.objdump.plt_got
 	objdump --disassemble --all -j .text ./so_checksum > so_checksum.objdump.text
 
-funcrepair: do_checksum
+funcinsert: do_checksum
 	$(FUNCREP) --bin do_checksum --outbin patch_do_checksum --fn patch_ex2.c checksum
 
-funcrepair_obj:
+funcinsert_obj:
 	objdump --disassemble --all ./patch_do_checksum > patch_do_checksum.objdump.dis_all
 	readelf -a -D patch_do_checksum > patch_do_checksum.elf
 	objdump --disassemble -j .plt ./patch_do_checksum > patch_do_checksum.objdump.plt
@@ -67,10 +67,10 @@ funcrepair_obj:
 	objdump --disassemble --all -j .text ./patch_do_checksum > patch_do_checksum.objdump.text
 
 
-funcrepair_debug: debug funcrepair
+funcinsert_debug: debug funcinsert
 
 
-test: funcrepair
+test: funcinsert
 	@echo "\nExpecting ./do_checksum to return different value than ./patch_do_checksum"
 	./do_checksum 123
 	./patch_do_checksum 123
