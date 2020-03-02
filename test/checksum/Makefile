@@ -5,6 +5,9 @@ CC=gcc
 I_DIRS=$(patsubst %, -I%, $(IDIR))
 CFLAGS=
 HOOK_CFLAGS=-Wl,-T script.ld -fno-stack-protector -nostdlib -nodefaultlibs -fPIC -Wl,-shared 
+#HOOK3_CFLAGS= -fPIC -Wl,-T script.ld -Wl,--whole-archive -nostdlib -nodefaultlibs -fkeep-inline-functions -fno-stack-protector -Wl,--verbose -static-libgcc -s -shared libc.a 
+#HOOK3_CFLAGS= -static -fPIC -Wl,-T script.ld -nostdlib -nodefaultlibs -fkeep-inline-functions -fno-stack-protector -Wl,--start-group -lc -Wl,--end-group -static-libgcc -s -shared 
+HOOK3_CFLAGS=  -fPIC -Wl,-T script.ld -nostdlib -nodefaultlibs -fkeep-inline-functions -fno-stack-protector  -shared 
 
 FUNCREP="../../funcinsert.py"
 
@@ -34,6 +37,9 @@ compile:
 hook: 
 	$(CC) $(HOOK_CFLAGS) $(I_DIRS) patch_ex2.c -o libhook.so	
 
+hook3: 
+	$(CC) $(HOOK3_CFLAGS)  patch_ex3.c -o libhook.so	
+
 do_checksum: compile
 	objdump --disassemble --all ./do_checksum > do_checksum.objdump.dis_all
 
@@ -44,7 +50,7 @@ do_checksum_obj:
 	echo objdump --disassemble --all -j .plt.got ./do_checksum > do_checksum.objdump.plt_got
 	objdump --disassemble --all -j .text ./do_checksum > do_checksum.objdump.text
 
-so_checksum: do_checksum hook
+so_checksum: do_checksum hook3
 	LD_LIBRARY_PATH=. $(CC) so_checksum.c -o so_checksum  libhook.so
 
 so_checksum_obj:
@@ -56,7 +62,7 @@ so_checksum_obj:
 	objdump --disassemble --all -j .text ./so_checksum > so_checksum.objdump.text
 
 funcinsert: do_checksum
-	$(FUNCREP) --bin do_checksum --outbin patch_do_checksum --fn patch_ex2.c checksum
+	$(FUNCREP) --bin do_checksum --outbin patch_do_checksum --fn patch_ex3.c checksum
 
 funcinsert_obj:
 	objdump --disassemble --all ./patch_do_checksum > patch_do_checksum.objdump.dis_all

@@ -18,7 +18,147 @@
  #include <stdarg.h>
  #include <stddef.h>
 
+ #include <sys/syscall.h>
+ #include <sys/fcntl.h>
+ //#include <sys/stat.h>
+
 #define stdout 1
+#define fileno(FP) ((FP)->_fileno)
+
+static inline int
+printf (const char *format, ...);
+
+static int _open(const char* pathname, int flags) {
+  register long ret asm ("rax");
+  register const char* _path asm ("rdi") = pathname;
+  register int _flags asm ("rsi") = flags;
+  register int sys_open asm ("rax") = 2;
+  asm volatile (
+      "syscall;"
+      : "=r" (ret)
+      : "r" (_path), "r" (_flags), "r" (sys_open)
+      :
+  );
+  return ret;
+}
+
+static int _open_mode(const char* pathname, int flags, unsigned int mode) {
+  register long ret asm ("rax");
+  register const char* _path asm ("rdi") = pathname;
+  register int _flags asm ("rsi") = flags;
+  register unsigned int _mode asm ("rdx") = mode;
+  register int sys_open asm ("rax") = 2;
+  asm volatile (
+      "syscall;"
+      : "=r" (ret)
+      : "r" (_path), "r" (_flags), "r" (_mode), "r" (sys_open)
+      :
+  );
+  return ret;
+}
+
+static int fopen(const char* pathname, const char* str){
+  unsigned int flags;
+  unsigned int mode;
+  char*x=str;
+  while (*x != '\0'){
+     if (*x == 'r'){
+	     char*y=(x+1);
+	     if ((*y=='\0')||((*(y+1)=='\0')&&(*y=='b'))) {
+	       flags = O_RDONLY;
+		   break;
+		 }
+		 else{
+	       flags = O_RDWR;
+		 }
+	 }
+     if (*x == 'w'){
+	     char*y=(x+1);
+	     if ((*y=='\0')||((*(y+1)=='\0')&&(*y=='b'))) {
+	       flags = O_WRONLY|O_CREAT|O_TRUNC;
+		   break;
+		 }
+		 else{
+	       flags = O_RDWR|O_CREAT|O_TRUNC;
+		   break;
+		 }
+	 }
+     if (*x == 'a'){
+	     char*y=(x+1);
+	     if ((*y=='\0')||((*(y+1)=='\0')&&(*y=='b'))) {
+	       flags = O_WRONLY|O_CREAT|O_APPEND;
+		   break;
+		 }
+		 else{
+	       flags = O_RDWR|O_CREAT|O_APPEND;
+		   break;
+		 }
+	 }
+	 x=x+1;
+  }
+  //flags |= O_CLOEXEC|S_IRGRP|S_IRUSR;
+  mode = S_IRUSR|S_IRGRP|S_IROTH|S_IWUSR;
+  flags |= O_CLOEXEC|O_SYNC;
+  printf("flags: 0x%o\n",flags);
+  // r | rb => O_RDONLY
+  // w | wb => O_WRONLY|O_CREAT|O_TRUNC
+  // a | ab => O_WRONLY|O_CREAT|O_APPEND
+  // r+ | rb+ | r+b => O_RDWR
+  // w+ | wb+ | w+b => O_RDWR|O_CREAT|O_TRUNC
+  // a+ | ab+ | a+b => O_RDWR|O_CREAT|O_APPEND
+  return _open_mode(pathname,flags,mode);
+}
+
+static inline int
+fflush (int x)
+{
+  /*
+  if (fp == NULL)
+    return _IO_flush_all ();
+  else
+    {
+      int result;
+      CHECK_FILE (fp, EOF);
+      _IO_acquire_lock (fp);
+      result = _IO_SYNC (fp) ? EOF : 0;
+      _IO_release_lock (fp);
+      return result;
+    }
+  */
+  return 0;
+}
+
+/*
+static int _open(const char* pathname, int flags, mode_t mode) {
+  register long ret asm ("rax");
+  register const char* _path asm ("rdi") = pathname;
+  register int _flags asm ("rsi") = flags;
+  register unsigned int _mode asm ("rdx") = unsigned int(mode);
+  register int sys_write asm ("rax") = 2;
+  asm volatile (
+      "syscall;"
+      : "=r" (ret)
+      : "r" (_path), "r" (_flags), "r" (_mode), "r" (sys_write)
+      :
+  );
+  return ret;
+}
+*/
+
+/*
+static inline FILE* fopen(const char *restrict filename, const char* restrict mode){
+  // if file doesn't already exist
+  // S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH
+  //
+  // r | rb => O_RDONLY
+  // w | wb => O_WRONLY|O_CREAT|O_TRUNC
+  // a | ab => O_WRONLY|O_CREAT|O_APPEND
+  // r+ | rb+ | r+b => O_RDWR
+  // w+ | wb+ | w+b => O_RDWR|O_CREAT|O_TRUNC
+  // a+ | ab+ | a+b => O_RDWR|O_CREAT|O_APPEND
+
+}
+*/
 
 // Write syscall
 // =============
@@ -106,7 +246,7 @@ static inline int vfprintf(long fd, const char *format, va_list arg) {
 						if(i<0) 
 						{ 
 							i = -i;
-							_write(fd,'-',1); 
+							_write(fd,"-",1); 
 						} 
 						_write(fd,s,sizeof(s));
 						break; 
@@ -145,12 +285,29 @@ printf (const char *format, ...)
   return done;
 }
 
+static inline int
+fprintf (int fdes, const char *format, ...)
+{
+  va_list arg;
+  int done;
+  va_start (arg, format);
+  done = vfprintf (fdes, format, arg);
+  va_end (arg);
+
+  return done;
+}
 
 /*
-int main()
+static inline int
+fprintf (FILE *stream, const char *format, ...)
 {
-printf("printf test message\n");
-_write(stdout,"_write Hello world!",10);
-return 0;
+  va_list arg;
+  int done;
+  int fdes = fileno(stream);
+  va_start (arg, format);
+  done = vfprintf (fdes, format, arg);
+  va_end (arg);
+
+  return done;
 }
 */

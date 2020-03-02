@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "patch_ex2.h"
+#include "patch_ex3.h"
 
 char mchecksum(char *s)
 {
