@@ -30,9 +30,11 @@ def parse_arguments():
                         help='Output binary image, where funcs from Input binary image have been hot swapped with patch file functions')
     parser.add_argument('--fn',dest='patchfile',action='store',
                         help='Input containing external functions for swapping')
-    parser.add_argument('--clang',dest='compiler', action='store_const', const='clang',
-                        default='gcc',
-                        help='Use CLANG compiler (default is "gcc")')
+    parser.add_argument('--compiler',dest='compiler', action='store', default='gcc',
+                        help='Specify compiler (default is "gcc")')
+    #parser.add_argument('--clang',dest='compiler', action='store_const', const='clang',
+    #                    default='gcc',
+    #                    help='Use CLANG compiler (default is "gcc")')
     parser.add_argument('--bindir',dest='bindir',action='store',
                         default=default_src,
                         help='Directory where binary image exists (default is `pwd`)')
