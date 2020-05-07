@@ -103,6 +103,9 @@ export PYTHONPATH=$PYTHONPATH:$PY2_PATH
 fi
 
 
+export PRD_GENPROG_DIR=${PRD_BASE_DIR}/genprog-code-func-repair
+export PRD_GENPROGSRC_DIR=${PRD_GENPROG_DIR}/src
+
 export CGC_BASE_DIR=${PRD_BASE_DIR}/cgc
 
 #export DESTDIR=${CGC_BASE_DIR}/cgc-build

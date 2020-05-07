@@ -11,7 +11,7 @@ import argparse
 import os,copy
 default_cwd=os.path.realpath(".")
 default_src=default_cwd
-debug = True
+debug = False
 default_log = "{}/funcinsert.debug.log".format(default_cwd)
 #default_cflags="-fPIC -Wl,-T script.ld -nostdlib -nodefaultlibs -nostartfiles -fkeep-static-functions -static -static-libgcc -Wl,-N -fno-plt"
 #default_hook_lib_depend="-l:libgcc.a -l:libc.a -l:libgcc_eh.a -l:libc.a -l:libgcc.a" 
@@ -63,7 +63,10 @@ def parse_arguments():
                         help='Directory where Function Source exists (default is `pwd`)')
 
     parser.add_argument('--do-not-override-so', dest='so_override', action='store_const', const=False, default=True)
+    parser.add_argument('--debug', dest='debug', action='store_const', const=True, default=False)
     args = parser.parse_args()
+    global debug
+    debug = args.debug
     print(args.funcs)
     return args
 
@@ -75,16 +78,16 @@ def compile_so(compiler,patchfile,hook_filename,hook_cflags,enable_diet):
                     compiler,hook_cflags,patchfile,hook_filename)
     if enable_diet:
         compile_command = "diet {}".format(compile_command)
-    dprint(compile_command)
+    print("Compilation command : \n\t%> "+compile_command)
     try:
        proc= subprocess.Popen(shlex.split(compile_command),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
        cout,cerr = proc.communicate()
        status = proc.returncode
        if status:
-          print("Compile error: \n{}\n{}".format(cout,cerr))
+          print("Compile error: \n{}\n{}".format(cout.decode('ascii'),cerr.decode('ascii')))
     except subprocess.CalledProcessError as e:
        print("Compile command failed: \n{}\nstdout:\n{}\nstderr:\n{}".format(compile_command,
-       "\n".join(cout),"\n".join(cerr)))
+       "\n".join(cout.decode('ascii')),"\n".join(cerr.decode('ascii'))))
        raise e
     return status
 
@@ -259,9 +262,9 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         renamed_fnsym = change_func_name(patch_fn_name,renamed_fn,binary_to_update)
         my_fn_addr = None
         segment_VA=segment.virtual_address
-        print("HELLLLOOOOO => {} + {}".format(patch_binary.header.file_type,patch_binary.is_pie))
-        print("HEADER => {}".format(patch_binary.header))
-        print("is_pie => {}".format(patch_binary.is_pie))
+        #print("HELLLLOOOOO => {} + {}".format(patch_binary.header.file_type,patch_binary.is_pie))
+        #print("HEADER => {}".format(patch_binary.header))
+        #print("is_pie => {}".format(patch_binary.is_pie))
         if patch_binary.header.file_type == lief.ELF.E_TYPE.DYNAMIC:
         #or \
         #   patch_binary.header.file_type == lief.ELF.E_TYPE.RELOCATABLE \
@@ -288,11 +291,11 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             #except lief.conversion_error as e:
             #    pass
         else:
-            print("new segment's file_offset => {:08x}".format(segment.file_offset))
-            print("new segment's virtual address => {:08x}".format(segment.virtual_address))
+            dprint("new segment's file_offset => {:08x}".format(segment.file_offset))
+            dprint("new segment's virtual address => {:08x}".format(segment.virtual_address))
             #TODO
-            print("patch binary's function's segment's virtual address => {:08x}".format(patch_binary.sections[my_fnsym.shndx].segments[0].virtual_address))
-            print("patch binary's function's address => {:08x}".format(my_fnsym.value))
+            dprint("patch binary's function's segment's virtual address => {:08x}".format(patch_binary.sections[my_fnsym.shndx].segments[0].virtual_address))
+            dprint("patch binary's function's address => {:08x}".format(my_fnsym.value))
 
             patch_segment_virtual_address = patch_binary.sections[my_fnsym.shndx].segments[0].virtual_address
             # need to update the .got.plt entries from injected section by adding this value (probably negative)
@@ -398,7 +401,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             myPLT = list()
             for i,rel in enumerate(patch_binary.relocations):
                 if not rel.is_rela:
-                    print("Relocation entry #{}'s [ address: {}; added: {} ] is_rela is False => this scheme not supported".format(
+                    dprint("Relocation entry #{}'s [ address: {}; added: {} ] is_rela is False => this scheme not supported".format(
                     rel,rel.address,rel.addend))
                 else:
                     my_gotplt_address = rel.address
@@ -406,19 +409,19 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                     trnsltd_gotplt_offset = my_gotplt_address - patch_segment_virtual_address
                     trnsltd_func_offset = my_func_address - patch_segment_virtual_address
                     trnsltd_func_address = trnsltd_func_offset + segment.virtual_address
-                    print("____________________________")
-                    print("| rel.addr : {:08x} | rel.addend : {:08x} | trns.addr : {:08x} | trns.addend : {:08x} |".format(
+                    dprint("____________________________")
+                    dprint("| rel.addr : {:08x} | rel.addend : {:08x} | trns.addr : {:08x} | trns.addend : {:08x} |".format(
                          rel.address,rel.addend,trnsltd_gotplt_offset,trnsltd_func_address
                          )
                          )
-                    print("| {} | {} | {} | {} |".format(
+                    dprint("| {} | {} | {} | {} |".format(
                          type(rel.address),
                          type(rel.addend),
                          type(trnsltd_gotplt_offset),
                          type(trnsltd_func_address)
                          )
                          )
-                    print("| {} | {} | {} | {} |".format(
+                    dprint("| {} | {} | {} | {} |".format(
                               list((rel.address).to_bytes(default_entry_size,byteorder="little" if little_endian else "big")),
                               list((rel.addend).to_bytes(default_entry_size,byteorder="little" if little_endian else "big")),
                               list((trnsltd_gotplt_offset).to_bytes(default_entry_size,byteorder="little" if little_endian else "big")),
@@ -429,14 +432,14 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                     orig_pltvalue_int = int.from_bytes(orig_pltvalue, byteorder="little" if little_endian else "big")
                     # actual .got value is 6 bytes ahead of the .plt entry (points to "66 90" that immediate follows JUMP)
                     plt_offset = orig_pltvalue_int - patch_segment_virtual_address - 6
-                    print("Original .got.plt value @ {:08x} => {} ( original plt value : {:08x} ) [ PLT OFFSET : {:08x} ]".format(
+                    dprint("Original .got.plt value @ {:08x} => {} ( original plt value : {:08x} ) [ PLT OFFSET : {:08x} ]".format(
                             trnsltd_gotplt_offset,
                             list(orig_pltvalue),
                             orig_pltvalue_int,
                             plt_offset
                             )
                         )
-                    print("Expected .got.plt update value => {}".format(list(
+                    dprint("Expected .got.plt update value => {}".format(list(
                         trnsltd_func_address.to_bytes(default_entry_size,byteorder="little" if little_endian else "big")))
                         )
                     rel_plt_entry = {
@@ -449,8 +452,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                            }
                     myPLT.append(rel_plt_entry)
                     jump_relative_offset = trnsltd_func_offset-plt_offset
-                    print("| creating relative jump    ====   |")
-                    print("| {:08x} = {:08x} - {:08x} |".format(
+                    dprint("| creating relative jump    ====   |")
+                    dprint("| {:08x} = {:08x} - {:08x} |".format(
                           jump_relative_offset,
                           trnsltd_func_offset,
                           plt_offset
@@ -459,12 +462,12 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                     jump_instruction = generate_jump_from_dest_address(jump_relative_offset)
                     plt_address = segment.virtual_address+plt_offset
                     orig_segment_contents = segment.content[plt_offset:plt_offset+8]
-                    print("Original .plt entry => {}".format(bytes(orig_segment_contents).hex()))
+                    dprint("Original .plt entry => {}".format(bytes(orig_segment_contents).hex()))
                     inject_code(binary_to_update=binary_to_update,address=plt_address,new_code=jump_instruction)
                     #segment.content[trnsltd_gotplt_offset:trnsltd_gotplt_offset+default_entry_size] = \
                     #    trnsltd_func_address.to_bytes(default_entry_size,byteorder="little" if little_endian else "big")
                     changed_segment_contents = segment.content[plt_offset:plt_offset+8]
-                    print("Updated .plt entry => {}".format(bytes(changed_segment_contents).hex()))
+                    dprint("Updated .plt entry => {}".format(bytes(changed_segment_contents).hex()))
                 # TODO ++++++ NOTE FROM PEMMA ++++++++ I THINK I STILL NEED TO CHANGE THE .plt to JUMP to the offset
                 ### but the above code can be used to generate a my_plotgot table
                 
