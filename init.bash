@@ -87,11 +87,16 @@ export DIET32PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}
 export DIET64PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x86_64)
 #CMake adds double quotes around "$DIET32PATH/diet clang" which the shell interpreter barfs on
 # this is a workaround 
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which gcc) \$@" > ${DIET32PATH}/diet_gcc
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which g++) \$@" > ${DIET32PATH}/diet_g++
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang) \$@" > ${DIET32PATH}/diet_clang
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang++) \$@" > ${DIET32PATH}/diet_clang++
+echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which gcc) -nostdinc \$@" > ${DIET32PATH}/diet_gcc
+echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which g++) -nostdinc \$@" > ${DIET32PATH}/diet_g++
+echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang) -nostdinc \$@" > ${DIET32PATH}/diet_clang
+echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang++) -nostdinc \$@" > ${DIET32PATH}/diet_clang++
 chmod +x ${DIET32PATH}/diet_gcc ${DIET32PATH}/diet_g++ ${DIET32PATH}/diet_clang ${DIET32PATH}/diet_clang++
+echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which gcc) -nostdinc \$@" > ${DIET64PATH}/diet_gcc
+echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which g++) -nostdinc \$@" > ${DIET64PATH}/diet_g++
+echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which clang) -nostdinc \$@" > ${DIET64PATH}/diet_clang
+echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which clang++) -nostdinc \$@" > ${DIET64PATH}/diet_clang++
+chmod +x ${DIET64PATH}/diet_gcc ${DIET64PATH}/diet_g++ ${DIET64PATH}/diet_clang ${DIET64PATH}/diet_clang++
 
 export FUNC_REPAIR_STDLIB=$(realpath stdlibc-src)
 export PATH=$PATH:$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x86_64)

@@ -12,6 +12,7 @@ import os,copy
 default_cwd=os.path.realpath(".")
 default_src=default_cwd
 debug = False
+just_seg = False
 default_log = "{}/funcinsert.debug.log".format(default_cwd)
 #default_cflags="-fPIC -Wl,-T script.ld -nostdlib -nodefaultlibs -nostartfiles -fkeep-static-functions -static -static-libgcc -Wl,-N -fno-plt"
 #default_hook_lib_depend="-l:libgcc.a -l:libc.a -l:libgcc_eh.a -l:libc.a -l:libgcc.a" 
@@ -63,10 +64,13 @@ def parse_arguments():
                         help='Directory where Function Source exists (default is `pwd`)')
 
     parser.add_argument('--do-not-override-so', dest='so_override', action='store_const', const=False, default=True)
+    #parser.add_argument('--just-seg', dest='just_seg', action='store_const', const=True, default=False)
     parser.add_argument('--debug', dest='debug', action='store_const', const=True, default=False)
     args = parser.parse_args()
     global debug
+    #global just_seg
     debug = args.debug
+    #just_seg = args.just_seg
     print(args.funcs)
     return args
 
@@ -156,8 +160,15 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,dest_addr
     return change_function_content(binary_to_update,func_name,my_function_call)
 
 def replaceSymbol(binary:lief.Binary,orig_name:str,new_fn_name):
+    # let's process the dynamic symbol first if it exists
+    if binary.has_dynamic_symbol(orig_name):
+        new_symbol=binary.get_dynamic_symbol(orig_name)
+        new_symbol.name=new_fn_name
     orig_symbol = binary.get_symbol(orig_name)
     osymndx = int(orig_symbol.shndx)
+    #if orig_symbol.symbol_version.value == 1:
+    #    orig_symbol.name = new_fn_name
+    #elif orig_symbol.symbol_version.value == 0:
     new_symbol = lief.ELF.Symbol()
     dprint("orig symbol   : {} [shndx = {}]".format(orig_symbol,orig_symbol.shndx))
     dprint("default symbol: {} [shndx = {}]".format(new_symbol,new_symbol.shndx))
@@ -167,7 +178,11 @@ def replaceSymbol(binary:lief.Binary,orig_name:str,new_fn_name):
     new_symbol.value = orig_symbol.value 
     symbol_version = None
     if orig_symbol.has_version:
-        new_symbol.symbol_version = orig_symbol.symbol_version
+        try:
+            new_symbol.symbol_version = lief.ELF.SymbolVersion(orig_symbol.symbol_version.value)
+        except Exception as e:
+            print("Exception when creating new symbol:"+str(e))
+            pass
     new_symbol.size = orig_symbol.size
     new_symbol.shndx = osymndx
     new_symbol.other = orig_symbol.other
@@ -185,7 +200,7 @@ def replaceSymbol(binary:lief.Binary,orig_name:str,new_fn_name):
         dprint("New symbol      => {}".format(new_symbol.shndx))
         raise ValueError
     return new_symbol
-    
+
 def change_func_name(orig_name:str,new_name:str,binary:lief.Binary):
     renamed_symbol=replaceSymbol(binary,orig_name,new_name)
     return renamed_symbol
@@ -241,6 +256,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     success = None
     if not their_fn.imported and their_fn.is_function:
         if not segment:
+            #binary_to_update.write("orig_bin.bin")
             dprint("Adding Segment:\n[----- \n {}\n] -----".format(patch_binary.segments[0]))
             patch_segments = patch_binary.segments[0]
             segment = binary_to_update.add(patch_segments)
