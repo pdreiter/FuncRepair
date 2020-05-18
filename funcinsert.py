@@ -19,6 +19,7 @@ default_log = "{}/funcinsert.debug.log".format(default_cwd)
 #default_hook_cflags=" {} {} ".format(default_cflags,default_hook_lib_depend)
 default_cflags="-static-pie -fPIC -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,text,-z,norelro,-T,script.ld"
 default_hook_cflags=" {} ".format(default_cflags)
+RENAME_FUNCTION=False
 
 #default_hook_cflags='-fPIC -nostdlib -nodefaultlibs -fno-builtin -static -fno-plt -L ./static_libs -shared'
 override_so = True
@@ -62,6 +63,11 @@ def parse_arguments():
     parser.add_argument('--fndir',dest='fndir',action='store',
                         default=default_src,
                         help='Directory where Function Source exists (default is `pwd`)')
+
+    parser.add_argument('--external-funcs',dest='externFns',nargs='+',
+                        default=None,
+                        help='format => patchFunction:<comma-separated list of external funcs> Modify function JUMP with Comma separated list of external functions whose addresses will be pushed onto the stack consistent with the call order as if the function was defined with void pointers of this same order [THIS MEANS THAT THIS ORDER MATTERS!]')
+
 
     parser.add_argument('--do-not-override-so', dest='so_override', action='store_const', const=False, default=True)
     #parser.add_argument('--just-seg', dest='just_seg', action='store_const', const=True, default=False)
@@ -140,7 +146,40 @@ def change_function_content(binary_to_update:lief.Binary,
         dprint("Overrun size: {}".format(len(my_code)-their_funcsym.size))
     return inject_code(binary_to_update,their_funcsym.value,my_code)
 
-def generate_jump_from_dest_address(dest_address:int):
+def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=True):
+    # this is for 32b
+    # from Fish: this will relatively call the function located at offset_to_the_function
+    # call $+5                                     => E8 00 00 00 00
+    # pop eax  <= this should be pop eax           => 58
+    # add eax, offset_to_the_function (@ 03020100) => 05 00 01 02 03
+    # call eax <= this should now be push eax      => 50
+    # total # of bytes for this: 12
+
+    # call $+5 => E8 00000000
+    hex_string = bytearray.fromhex("e8")
+    hex_addr = int(0).to_bytes(4,byteorder='little')
+    hex_string.extend(hex_addr)
+    current_offset=len(hex_string)
+    # pop eax => 58
+    hex_string.extend(bytes.fromhex("58"))
+    # add eax => 05 <address>
+    hex_string.extend(bytes.fromhex("05"))
+    # instruction length is 5, so $eip is pointing at curr_offset
+    rel_offset = voidptr_address-(cur_eip_offset+current_offset)
+    hex_addr = (rel_offset.to_bytes(4,byteorder='little',signed=True))
+    print("rel_offset = cur_eip_offset - voidptr_address")
+    print("{0:10} = {2:13}  - {1:15}".format(rel_offset,cur_eip_offset+current_offset,voidptr_address))
+    print("{0:10x} = {2:13x}  - {1:15x}".format(rel_offset,cur_eip_offset+current_offset,voidptr_address))
+    print("hex val of rel_offset: {}".format(hex_addr.hex()))
+    hex_string.extend(hex_addr)
+    # push eax => 50
+    hex_string.extend(bytes.fromhex("50"))
+    #hex_string.extend(bytes.fromhex("33c0"))
+    #hex_string.extend(bytes.fromhex("50"))
+    print("push {} VOID* Instructions: {}".format(len(hex_string),hex_string))
+    return hex_string
+
+def generate_jump_from_dest_address(dest_address:int,offset:int=0):
     # this should really be changed to some python library 
     # that converts an assembly instruction to bytearray
     # there could be some endian-ness issues with "big" endian
@@ -148,15 +187,50 @@ def generate_jump_from_dest_address(dest_address:int):
     # hence the dest_addr-5 
     hex_string = bytearray.fromhex("e9")
     # relative address 0+%rip
-    hex_addr = (dest_address-5).to_bytes(4,byteorder='little')
+    # %eip/%rip is pointing at next instruction, so offset+5
+    hex_addr = (dest_address-(offset+5)).to_bytes(4,byteorder='little')
     hex_string.extend(hex_addr)
     dprint("JUMP Instruction: {}".format(hex_string))
     return hex_string
 
-def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,dest_address:int):
+def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
+                            dest_address:int,offset:int=0,
+                            func_list:list=None,func_dict:dict=None
+                           ):
+    cur_offset=offset
+    func_to_update = binary_to_update.get_symbol(func_name)
+    print("SYMBOL: Function {} @ offset 0x{:x}".format(func_name,func_to_update.value))
+    try:
+        print("DYN SYMBOL: Function {} @ offset 0x{:x}".format(func_name,
+          binary_to_update.get_dynamic_symbol(func_name).value
+        ))
+    except:
+        pass
+    hex_string=bytearray()
+    rev_funclist=func_list
+    # need to add the void* parameters in reverse order
+    if rev_funclist:
+       rev_funclist.reverse()
+       print("Function list: {}".format(rev_funclist))
+       # pop off return address from stack
+       # pop ebx => 5b
+       hex_string+=bytearray.fromhex("5b")
+       cur_offset=len(hex_string)+offset
+       for i in rev_funclist:
+           address=func_dict[i]
+           print("0x{:x} + 0x{:x} = 0x{:x}".format(func_to_update.value,cur_offset,
+           func_to_update.value+cur_offset))
+           hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
+           cur_offset=len(hex_string)+offset
+
+       # push ebx => 53
+       hex_string+=bytearray.fromhex("53")
+       print("hex_string[{}] => {}".format(len(hex_string),hex_string));
+    cur_offset=len(hex_string)+offset
     dprint("Original address: {:08x}".format(dest_address))
-    hex_string = generate_jump_from_dest_address(dest_address)
+    hex_string += generate_jump_from_dest_address(dest_address,cur_offset)
     my_function_call = hex_string
+    print("my_function_call[{}] => {}".format(len(my_function_call),my_function_call))
     return change_function_content(binary_to_update,func_name,my_function_call)
 
 def replaceSymbol(binary:lief.Binary,orig_name:str,new_fn_name):
@@ -240,7 +314,7 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
     return success,binary_to_update,segment
 
 def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_binary:lief.Binary,
-    patch_fn_name:str, segment:lief.ELF.Segment=None):
+    patch_fn_name:str, segment:lief.ELF.Segment=None, ext_funcs:list=None):
     """
     this function is similar to LIEF example 05
      What it does is:
@@ -254,6 +328,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     """
     their_fn = binary_to_update.get_symbol(patch_fn_name)
     success = None
+    extfncs = None if not ext_funcs else dict()
     if not their_fn.imported and their_fn.is_function:
         if not segment:
             #binary_to_update.write("orig_bin.bin")
@@ -264,6 +339,20 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             dprint("Segment already exists: {}".format(segment))
         
         their_fn = binary_to_update.get_symbol(patch_fn_name)
+        if ext_funcs:
+            mydecl=""
+            for i in ext_funcs:
+                mydecl+="void* {},".format(i)
+                try:
+                   extfncs[i]=binary_to_update.get_symbol(i).value
+                   dprint("External function: {} @ {}".format(i,hex(extfncs[i])))
+                except Exception as e:
+                   print("Exception occurred when trying to find external function symbol {}".format(i))
+                   print("ERROR: {}".format(e))
+                   import sys; sys.exit(1)
+            print("| NOTE: expecting function declaration like so:\n")
+            print("| \t {}({}...)\n".format(patch_fn_name,mydecl))
+        #import sys;sys.exit(1)
         dprint("Using Segment:\n[---- \n {}\n] -----\n@ 0x{:08x}".format(segment,segment.virtual_address))
         dprint("Segment type is :{}".format(segment.type))
         my_fnsym = patch_binary.get_symbol(patch_fn_name)
@@ -274,18 +363,15 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         fn_segment = binary_to_update.segment_from_virtual_address(their_fn.value)
         dprint("Their function segment: @ {:04x}".format(fn_segment.virtual_address))
         dprint("my function segment @ {:04x} + offset {:04x}".format(segment.virtual_address,my_fnsym.value))
-        renamed_fn = "m"+patch_fn_name
-        renamed_fnsym = change_func_name(patch_fn_name,renamed_fn,binary_to_update)
+        renamed_fn = patch_fn_name
+        renamed_fnsym = binary_to_update.get_symbol(renamed_fn)
+        if RENAME_FUNCTION:
+            renamed_fn = "m"+patch_fn_name
+            renamed_fnsym = change_func_name(patch_fn_name,renamed_fn,binary_to_update)
         my_fn_addr = None
         segment_VA=segment.virtual_address
-        #print("HELLLLOOOOO => {} + {}".format(patch_binary.header.file_type,patch_binary.is_pie))
-        #print("HEADER => {}".format(patch_binary.header))
-        #print("is_pie => {}".format(patch_binary.is_pie))
         if patch_binary.header.file_type == lief.ELF.E_TYPE.DYNAMIC:
-        #or \
-        #   patch_binary.header.file_type == lief.ELF.E_TYPE.RELOCATABLE \
-        # :
-        #if len(patch_binary.relocations)==0:
+            dprint("DYNAMIC PATCH BINARY")
             my_fn_addr = segment.virtual_address + my_fnsym.value
             dprint("Relative offset from their function to patch function : {:04x}".format(my_fn_addr-their_fn.value))
             dprint("{:08x} => relative jump address [func.value] {:08x}".format(my_fn_addr,my_fn_addr-their_fn.value))
@@ -293,20 +379,17 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             dprint("segment virtual address {:08x} ".format(segment_VA))
             dprint("virtual address {:08x} ".format(my_fn_addr))
             dprint("my_fnsym.value {:08x} ".format(my_fnsym.value))
-            #try:
-            if True:
-                dprint("segment offset {:x} [ virtual address {:08x} ]".format(
-                              binary_to_update.virtual_address_to_offset(segment_VA),
-                              segment_VA))
-                dprint("segment content @ {:x} : {}".format(
-                              binary_to_update.virtual_address_to_offset(segment_VA),
-                              bytearray(binary_to_update.get_content_from_virtual_address(segment_VA,28)).hex()))
-                dprint("offset {:x} [ virtual address {:08x} ]".format(
-                              binary_to_update.virtual_address_to_offset(my_fn_addr),
-                              my_fn_addr))
-            #except lief.conversion_error as e:
-            #    pass
+            dprint("segment offset {:x} [ virtual address {:08x} ]".format(
+                          binary_to_update.virtual_address_to_offset(segment_VA),
+                          segment_VA))
+            dprint("segment content @ {:x} : {}".format(
+                          binary_to_update.virtual_address_to_offset(segment_VA),
+                          bytearray(binary_to_update.get_content_from_virtual_address(segment_VA,28)).hex()))
+            dprint("offset {:x} [ virtual address {:08x} ]".format(
+                          binary_to_update.virtual_address_to_offset(my_fn_addr),
+                          my_fn_addr))
         else:
+            dprint("STATIC PATCH BINARY")
             dprint("new segment's file_offset => {:08x}".format(segment.file_offset))
             dprint("new segment's virtual address => {:08x}".format(segment.virtual_address))
             #TODO
@@ -325,7 +408,9 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                          (my_fnsym.value-patch_segment_virtual_address)
             dprint("Relative offset from their function to patch function : {:04x}".format(my_fn_addr-their_fn.value))
             change_function_to_jump(binary_to_update,func_name=renamed_fn,
-                                    dest_address=(my_fn_addr-their_fn.value))
+                                    dest_address=(my_fn_addr-their_fn.value),
+                                    func_list=ext_funcs,func_dict=extfncs
+                                    )
             dprint("{:08x} => relative jump address [func.value] {:08x}".format(my_fn_addr,my_fn_addr-their_fn.value))
             dprint("{:08x} => relative jump address [func.value] {:08x} [their function value: {:08x}]".format(my_fn_addr,my_fn_addr-their_fn.value,their_fn.value))
             dprint("virtual address {:08x} ".format(my_fn_addr))
@@ -492,7 +577,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             print("Cannot support this patch type")
             sys.exit(-1);
         change_function_to_jump(binary_to_update,func_name=renamed_fn,
-                                dest_address=(my_fn_addr-their_fn.value))
+                                dest_address=(my_fn_addr-their_fn.value),
+                                func_list=ext_funcs,func_dict=extfncs)
         dprint("content '{}' @ {:08x} ]".format(
                               bytearray(binary_to_update.get_content_from_virtual_address(segment.virtual_address,28)).hex(),
                               segment.virtual_address))
@@ -526,7 +612,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     
     return success,binary_to_update,segment
 
-def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list):
+def inject_hook(inputbin:str,outputbin:str,hook_file:str,
+                override_functions:list,extFns:dict):
     # currently developed with assumption that functions being patched exist in input binary image
     # and not an external dynamic shared object/library
     #imported_libs = modifyme.imports
@@ -543,6 +630,7 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list
     segment = None
     dynlib  = None
     for fn in override_functions:
+        external_funcs = None if ((not extFns) or (fn not in extFns)) else extFns[fn]
         my_fn=None
         their_fn=None
         try:
@@ -586,7 +674,8 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,override_functions:list
                success,modifyme,segment = patch_func_with_jump_to_added_segment(modifyme,
                                                 hookme,
                                                 fn,
-                                                segment)
+                                                segment,
+                                                external_funcs)
             else:
                print("ERROR: {} is not a function in {}".format(fn,inputbin))
                print("\nExiting.\n")
@@ -609,6 +698,17 @@ def main(args):
     hook_cflags = args.cflags
     enable_diet = args.dietlibc
     pfile=fn_fname
+    external_funcs = None
+    if args.externFns:
+        external_funcs=dict()
+        import re
+        p=re.compile("^(\w+):(.*)$")
+        for i in args.externFns:
+            m=p.search(i)
+            fn=m.group(1)
+            ptrs=m.group(2).split(',')
+            external_funcs[fn]=ptrs
+            dprint("{} => {}".format(fn,ptrs))
     if not os.path.exists(os.path.realpath("{}".format(fn_fname))):
         if not os.path.isfile(os.path.realpath("{}/{}".format(fn_src_dir,fn_fname))):
             import subprocess,shlex
@@ -641,7 +741,7 @@ def main(args):
        dprint("binary source directory contents:\n[\n{}\n]".format(subprocess.check_output("ls {}".format(bin_src_dir))))
        dprint("ERROR: '{}' file does not exist in {}".format(bin_fullpath))
        return -1
-    status = inject_hook(bin_fullpath,out_fullpath,fn_fullpath,fn_list)
+    status = inject_hook(bin_fullpath,out_fullpath,fn_fullpath,fn_list,external_funcs)
     if not status:
        print("Successfully stitched ALL '{}' into '{}' as output '{}'".format(fn_list,input_fname,output_fname))
     chmod_mask = os.stat(bin_fullpath).st_mode & 0o777
