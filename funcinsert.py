@@ -213,8 +213,8 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        rev_funclist.reverse()
        print("Function list: {}".format(rev_funclist))
        # pop off return address from stack
-       # pop ebx => 5b
-       hex_string+=bytearray.fromhex("5b")
+       # pop ecx => 59
+       hex_string+=bytearray.fromhex("59")
        cur_offset=len(hex_string)+offset
        for i in rev_funclist:
            address=func_dict[i]
@@ -223,8 +223,8 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
            hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
            cur_offset=len(hex_string)+offset
 
-       # push ebx => 53
-       hex_string+=bytearray.fromhex("53")
+       # push ecx => 51
+       hex_string+=bytearray.fromhex("51")
        print("hex_string[{}] => {}".format(len(hex_string),hex_string));
     cur_offset=len(hex_string)+offset
     dprint("Original address: {:08x}".format(dest_address))
