@@ -329,12 +329,37 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     their_fn = binary_to_update.get_symbol(patch_fn_name)
     success = None
     extfncs = None if not ext_funcs else dict()
+    
+    little_endian = True if binary_to_update.abstract.header.endianness == lief.ENDIANNESS.LITTLE else False
     if not their_fn.imported and their_fn.is_function:
         if not segment:
             #binary_to_update.write("orig_bin.bin")
             dprint("Adding Segment:\n[----- \n {}\n] -----".format(patch_binary.segments[0]))
             patch_segments = patch_binary.segments[0]
+            orig_rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
             segment = binary_to_update.add(patch_segments)
+            binary_to_update.write("added_seg.bin")
+            if binary_to_update.name == "AIS-Lite":
+                sym=binary_to_update.get_symbol("EPFD")
+                section=binary_to_update.sections[sym.shndx]
+                dprint(hex(section.virtual_address))
+                dprint(hex(sym.value))
+                sym_offset=(sym.value-section.virtual_address)+8*4
+                dprint(hex(sym_offset))
+                dprint(sym_offset)
+                content = section.content[sym_offset:sym_offset+4]
+                ptr_val = int.from_bytes(content, byteorder="little" if little_endian else "big")
+                rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
+                offset=rodata_VA-orig_rodata_VA
+                new_ptr_val=ptr_val+offset
+                new_code = new_ptr_val.to_bytes(4,byteorder='little' if little_endian else 'big')
+                address = section.virtual_address + sym_offset
+                binary_to_update.patch_address(address,new_ptr_val,4)
+                dprint("AIS-Lite workaround - offset: {} , orig content: {}, expected content: {} or 0x{:x}".format(address,content,new_code,new_ptr_val))
+                dprint("=> actual content: {}".format(section.content[sym_offset:sym_offset+4]))
+
+                
+                
         else:
             dprint("Segment already exists: {}".format(segment))
         
