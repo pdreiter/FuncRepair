@@ -339,15 +339,23 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             orig_rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
             segment = binary_to_update.add(patch_segments)
             binary_to_update.write("added_seg.bin")
+            sym=None
+            fixme=False
             if binary_to_update.name == "AIS-Lite":
                 sym=binary_to_update.get_symbol("EPFD")
+                fixme=True
+            if binary_to_update.name == "ASCII_Content_Server":
+                sym=binary_to_update.get_symbol("InitialInfo")
+                fixme=True
+            if fixme:
+                esize= 8 if binary_to_update.header.identity_class == lief.ELF.ELF_CLASS.CLASS64 else 4
                 section=binary_to_update.sections[sym.shndx]
                 dprint(hex(section.virtual_address))
                 dprint(hex(sym.value))
-                sym_offset=(sym.value-section.virtual_address)+8*4
+                sym_offset=(sym.value-section.virtual_address)+sym.size-esize
                 dprint(hex(sym_offset))
                 dprint(sym_offset)
-                content = section.content[sym_offset:sym_offset+4]
+                content = section.content[sym_offset:sym_offset+esize]
                 ptr_val = int.from_bytes(content, byteorder="little" if little_endian else "big")
                 rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
                 offset=rodata_VA-orig_rodata_VA
@@ -355,8 +363,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                 new_code = new_ptr_val.to_bytes(4,byteorder='little' if little_endian else 'big')
                 address = section.virtual_address + sym_offset
                 binary_to_update.patch_address(address,new_ptr_val,4)
-                dprint("AIS-Lite workaround - offset: {} , orig content: {}, expected content: {} or 0x{:x}".format(address,content,new_code,new_ptr_val))
-                dprint("=> actual content: {}".format(section.content[sym_offset:sym_offset+4]))
+                print("{} workaround - offset: {} , orig content: {}, expected content: {} or 0x{:x}".format(binary_to_update.name,address,content,new_code,new_ptr_val))
+                print("=> actual content: {}".format(section.content[sym_offset:sym_offset+4]))
 
                 
                 
