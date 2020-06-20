@@ -81,7 +81,7 @@ if [[ ! -d "${libinstall_dir}/dietlibc" ]]; then
    cd dietlibc-${dietlibc_ver}
    make 
    make i386
-   make x32
+   #make x32
    popd
 fi
 export DIETX32PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x32)
@@ -107,18 +107,13 @@ chmod +x ${DIET64PATH}/diet_gcc ${DIET64PATH}/diet_g++ ${DIET64PATH}/diet_clang 
 
 export FUNC_REPAIR_STDLIB=$(realpath stdlibc-src)
 export PATH=$PATH:$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x86_64)
-PY2_PATH=${CGC_BASE_DIR}/poll-generator/lib
-if [[ -z $PYTHONPATH ]]; then
-export PYTHONPATH=$PY2_PATH
-else
-export PYTHONPATH=$PYTHONPATH:$PY2_PATH
-fi
-
 
 export PRD_GENPROG_DIR=${PRD_BASE_DIR}/genprog-code-func-repair
 export PRD_GENPROGSRC_DIR=${PRD_GENPROG_DIR}/src
 
 export CGC_BASE_DIR=${PRD_BASE_DIR}/cgc
+[[ ! -e ${CGC_BASE_DIR} ]] && mkdir -p ${CGC_BASE_DIR}
+
 
 #export DESTDIR=${CGC_BASE_DIR}/cgc-build
 #[[ ! -d "${DESTDIR}" ]] && mkdir -p ${DESTDIR}
@@ -148,4 +143,12 @@ pushd ${CGC_BASE_DIR}
 
 export CGC_CB_DIR=${CGC_BASE_DIR}/cb-multios
 
-popd 
+PY2_PATH=${CGC_BASE_DIR}/poll-generator/lib
+if [[ -z $PYTHONPATH ]]; then
+export PYTHONPATH=$PY2_PATH
+else
+export PYTHONPATH=$PYTHONPATH:$PY2_PATH
+fi
+
+popd
+
