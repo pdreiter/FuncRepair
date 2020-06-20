@@ -9,10 +9,14 @@ purpose: extract set of functions from binary and patch with external input file
 import lief
 import argparse
 import os,copy
+from datetime import datetime
+dateinfo=datetime.now().strftime("%d%m%Y%I%M%S")
+
 default_cwd=os.path.realpath(".")
 default_src=default_cwd
 debug = False
 just_seg = False
+no_date=False
 default_log = "{}/funcinsert.debug.log".format(default_cwd)
 #default_cflags="-fPIC -Wl,-T script.ld -nostdlib -nodefaultlibs -nostartfiles -fkeep-static-functions -static -static-libgcc -Wl,-N -fno-plt"
 #default_hook_lib_depend="-l:libgcc.a -l:libc.a -l:libgcc_eh.a -l:libc.a -l:libgcc.a" 
@@ -27,7 +31,7 @@ with open(default_log,"w") as f:
     print("HELLO",file=f,flush=True)
     f.close()
 
-hook_filename = "libhook.so"
+hook_filename="libhook.so"
 
 def dprint(*args, **kwargs):
     if debug:
@@ -49,6 +53,12 @@ def parse_arguments():
                         help='Input containing external functions for swapping')
     parser.add_argument('--hook-cflags',dest='cflags', action='store', default=default_hook_cflags,
                         help='Specify compiler flags for generating libhook.so')
+    parser.add_argument('--date',dest='nodate', action='store_const', const=False,
+                        default=True,
+                        help='Append date info on the libhook.so filename (Default behavior does not append date unless "--genprog" is specified)')
+    parser.add_argument('--genprog',dest='genprog', action='store_const', const=True,
+                        default=False,
+                        help='Runs in genprog mode, where intermediate files are deleted after generation.')
     parser.add_argument('--nodietlibc',dest='dietlibc', action='store_const', const=False,
                         default=True,
                         help='Do not use "dietlibc" (default is to use "dietlibc")')
@@ -84,22 +94,80 @@ def compile_so(compiler,patchfile,hook_filename,hook_cflags,enable_diet):
     import subprocess,shlex
     #hook_cflags="-fPIC -Wl,-T script.ld -nostdlib -nodefaultlibs -fkeep-inline-functions -fno-stack-protector -shared"
     #compile_command='{} -Wl,-T script.ld -fno-stack-protector -nostdlib -nodefaultlibs -fPIC -Wl,-shared {} -o {}'.format(
+    hcflags=hook_cflags
+    hldflags=None
+    compfile=hook_filename
+    ldfile=None
+    ld_command=None
     compile_command='{} {} {} -o {}'.format(
-                    compiler,hook_cflags,patchfile,hook_filename)
+                    compiler,hcflags,patchfile,compfile)
+    if 'COMPILE(' in hook_cflags:
+        import re
+        p=re.compile("^COMPILE\((.*)\):LINK\((.*)\)$")
+        m=p.search(hook_cflags)
+        if not m:
+            print(hook_cflags)
+            print("you have some regexp error")
+        hcflags=m.group(1)
+        hldflags=m.group(2)
+        if hldflags != "":
+            print("No linking options")
+            compfile=patchfile[:-2]+".o"
+            ldfile=hook_filename
+            ld_command='{0} {4} -o {3} {2} {1}'.format(compiler,hldflags,compfile,ldfile,hcflags)
+            compile_command='{} {} -c {} -o {}'.format(
+                        compiler,hcflags,patchfile,compfile)
+        else:
+            compile_command='{} {} {} -o {}'.format(
+                    compiler,hcflags,patchfile,compfile)
+
     if enable_diet:
-        compile_command = "diet {}".format(compile_command)
+        diet_path=os.environ.get("DIET64PATH")
+        if '-m32' in hook_cflags:
+            diet_path=os.environ.get("DIET32PATH")
+        compile_command = "{0}/diet_{1}".format(diet_path,compile_command)
+        if ld_command:
+            ld_command = "{0}/diet_{1}".format(diet_path,ld_command)
+            
+        #compile_command = "diet {1}".format(diet_path,compile_command)
+    dprint("Compilation command : \n\t%> "+compile_command)
     print("Compilation command : \n\t%> "+compile_command)
+    if ld_command:
+        dprint("Linking command : \n\t%> "+ld_command)
+        print("Linking command : \n\t%> "+ld_command)
+
+    cstatus=0
+    lstatus=0
     try:
        proc= subprocess.Popen(shlex.split(compile_command),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
        cout,cerr = proc.communicate()
-       status = proc.returncode
-       if status:
+       ctatus = proc.returncode
+       if cstatus:
+          dprint("Compile error: \n{}\n{}".format(cout.decode('ascii'),cerr.decode('ascii')))
           print("Compile error: \n{}\n{}".format(cout.decode('ascii'),cerr.decode('ascii')))
     except subprocess.CalledProcessError as e:
+       dprint("Compile command failed: \n{}\nstdout:\n{}\nstderr:\n{}".format(compile_command,
+       "\n".join(cout.decode('ascii')),"\n".join(cerr.decode('ascii'))))
        print("Compile command failed: \n{}\nstdout:\n{}\nstderr:\n{}".format(compile_command,
        "\n".join(cout.decode('ascii')),"\n".join(cerr.decode('ascii'))))
        raise e
-    return status
+    dprint("Compile status: {}".format(cstatus))
+    if ld_command:
+        try:
+           proc= subprocess.Popen(shlex.split(ld_command),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+           cout,cerr = proc.communicate()
+           lstatus = proc.returncode
+           if lstatus:
+              dprint("Linking error: \n{}\n{}".format(cout.decode('ascii'),cerr.decode('ascii')))
+              print("Linking error: \n{}\n{}".format(cout.decode('ascii'),cerr.decode('ascii')))
+        except subprocess.CalledProcessError as e:
+           dprint("Linking command failed: \n{}\nstdout:\n{}\nstderr:\n{}".format(ld_command,
+           "\n".join(cout.decode('ascii')),"\n".join(cerr.decode('ascii'))))
+           print("Linking command failed: \n{}\nstdout:\n{}\nstderr:\n{}".format(ld_command,
+           "\n".join(cout.decode('ascii')),"\n".join(cerr.decode('ascii'))))
+           raise e
+        dprint("Linking status: {}".format(lstatus))
+    return cstatus or lstatus
 
 def generatePatchSO(compiler,patchfile,hook_cflags,enable_diet):
     """
@@ -215,6 +283,9 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        # pop off return address from stack
        # pop ecx => 59
        hex_string+=bytearray.fromhex("59")
+       cur_offset=len(hex_string)+offset
+       # push ebx => 53
+       hex_string+=bytearray.fromhex("53")
        cur_offset=len(hex_string)+offset
        for i in rev_funclist:
            address=func_dict[i]
@@ -377,7 +448,18 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             for i in ext_funcs:
                 mydecl+="void* {},".format(i)
                 try:
-                   extfncs[i]=binary_to_update.get_symbol(i).value
+                   j=binary_to_update.get_symbol(i)
+                   address=None
+                   if j.imported:
+                       try:
+                           xrelo=binary_to_update.get_relocation(i)
+                           address=xrelo.address
+                       except:
+                           print("ERROR! symbol '{}' cannot be resolved!".format(i))
+                           import sys;sys.exit(1)
+                   else:
+                      address=j.value
+                   extfncs[i]=address
                    dprint("External function: {} @ {}".format(i,hex(extfncs[i])))
                 except Exception as e:
                    print("Exception occurred when trying to find external function symbol {}".format(i))
@@ -720,6 +802,7 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
 
 def main(args):
     global override_so
+    global hook_filename
     fn_list = args.funcs  
     input_fname = args.infile
     fn_fname = args.patchfile
@@ -730,6 +813,9 @@ def main(args):
     override_so = args.so_override
     hook_cflags = args.cflags
     enable_diet = args.dietlibc
+    genprog = args.genprog
+    if not args.nodate or genprog:
+        hook_filename = "libhook."+dateinfo+".so"
     pfile=fn_fname
     external_funcs = None
     if args.externFns:
@@ -760,6 +846,7 @@ def main(args):
        print("Successfully compiled '{}'".format(fn_fullpath))
     else:
        print("Could not compile '{}'".format(fn_fullpath))
+       cleanup(bin_src_dir,hook_filename,input_fname,bin_fullpath,hook_cflags)
        import sys
        sys.exit(-1)
    
@@ -777,9 +864,31 @@ def main(args):
     status = inject_hook(bin_fullpath,out_fullpath,fn_fullpath,fn_list,external_funcs)
     if not status:
        print("Successfully stitched ALL '{}' into '{}' as output '{}'".format(fn_list,input_fname,output_fname))
+       dprint("Hook lib is generated in '{}'".format(hook_filename))
     chmod_mask = os.stat(bin_fullpath).st_mode & 0o777
     os.chmod(out_fullpath,chmod_mask)
+    if genprog:
+       if not status or not debug:
+           os.remove(hook_filename)
+       else:
+           cleanup(bin_src_dir,hook_filename,input_fname,bin_fullpath,hook_cflags)
 
+
+def cleanup(bin_src_dir,hook_filename,input_fname,bin_fullpath,hook_cflags):
+   odebugdir=bin_src_dir+"/genprog_debug/"+dateinfo
+   debug_dir=odebugdir
+   i=0
+   while os.path.isdir(debug_dir):
+       debug_dir="{}.{}".format(odebugdir,i)
+       i=i+1
+   os.mkdir(debug_dir)
+   os.rename(hook_filename,debug_dir+"/"+os.basename(hook_filename))
+   os.rename(input_fname,debug_dir+"/"+os.basename(input_fname))
+   os.copy(bin_fullpath,debug_dir+"/"+os.basename(input_fname))
+   with open(debug_dir+"/compile_flags","w") as f:
+       f.write(hook_cflags)
+       
+   dprint("Failure can be debugged at :\n{}".format(debugdir))
 
 
 
