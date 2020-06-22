@@ -284,9 +284,6 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        # pop ecx => 59
        hex_string+=bytearray.fromhex("59")
        cur_offset=len(hex_string)+offset
-       # push ebx => 53
-       hex_string+=bytearray.fromhex("53")
-       cur_offset=len(hex_string)+offset
        for i in rev_funclist:
            address=func_dict[i]
            print("0x{:x} + 0x{:x} = 0x{:x}".format(func_to_update.value,cur_offset,
