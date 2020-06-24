@@ -79,21 +79,23 @@ if [[ ! -d "${libinstall_dir}/dietlibc" ]]; then
    unxz dietlibc-${dietlibc_ver}.tar.xz
    tar -xvf dietlibc-${dietlibc_ver}.tar
    cd dietlibc-${dietlibc_ver}
+   $(which perl) -pi -e's#^(\#define WANT_SYSENTER)#// pdr - removing this because we want to not use the unified_syscall (BREAKS STUFF)\n//$1#' dietfeatures.h
+
    make 
    make i386
    #make x32
    popd
 fi
-export DIETX32PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x32)
+#export DIETX32PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x32)
 export DIET32PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-i386)
 export DIET64PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x86_64)
 #CMake adds double quotes around "$DIET32PATH/diet clang" which the shell interpreter barfs on
 # this is a workaround 
-echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which gcc) -nostdinc \$@" > ${DIETX32PATH}/diet_gcc
-echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which g++) -nostdinc \$@" > ${DIETX32PATH}/diet_g++
-echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang) -nostdinc \$@" > ${DIETX32PATH}/diet_clang
-echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang++) -nostdinc \$@" > ${DIETX32PATH}/diet_clang++
-chmod +x ${DIETX32PATH}/diet_gcc ${DIETX32PATH}/diet_g++ ${DIETX32PATH}/diet_clang ${DIETX32PATH}/diet_clang++
+#echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which gcc) -nostdinc \$@" > ${DIETX32PATH}/diet_gcc
+#echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which g++) -nostdinc \$@" > ${DIETX32PATH}/diet_g++
+#echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang) -nostdinc \$@" > ${DIETX32PATH}/diet_clang
+#echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang++) -nostdinc \$@" > ${DIETX32PATH}/diet_clang++
+#chmod +x ${DIETX32PATH}/diet_gcc ${DIETX32PATH}/diet_g++ ${DIETX32PATH}/diet_clang ${DIETX32PATH}/diet_clang++
 echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which gcc) -nostdinc \$@" > ${DIET32PATH}/diet_gcc
 echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which g++) -nostdinc \$@" > ${DIET32PATH}/diet_g++
 echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang) -nostdinc \$@" > ${DIET32PATH}/diet_clang
