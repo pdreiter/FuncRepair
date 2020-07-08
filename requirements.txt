@@ -2,6 +2,6 @@ lief==0.10.1
 pandoc==1.0.2
 pkg-resources==0.0.0
 ply==3.11
-yaml
-pycryptodome
+PyYAML==5.3.1
+pycryptodome==3.9.7
 defusedxml
