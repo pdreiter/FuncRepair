@@ -64,6 +64,10 @@ def parse_arguments():
                         help='Do not use "dietlibc" (default is to use "dietlibc")')
     parser.add_argument('--compiler',dest='compiler', action='store', default='gcc',
                         help='Specify compiler (default is "gcc")')
+    parser.add_argument('--use-edx-reg',dest='register', action='store_const', const="edx",
+                        default="ecx",
+                        help='Use %edx register and not the %ecx register for push/pops when manipulating stack on function E9 jump'
+                        )
     #parser.add_argument('--clang',dest='compiler', action='store_const', const='clang',
     #                    default='gcc',
     #                    help='Use CLANG compiler (default is "gcc")')
@@ -203,16 +207,18 @@ def inject_code(binary_to_update:lief.Binary,address:int,new_code:bytearray):
 
 def change_function_content(binary_to_update:lief.Binary,
                             func_name:str,
-                            my_code:bytearray):
+                            my_code:bytearray,
+                            offset:int=0):
     dprint("Changing function '{}'".format(func_name))
     their_funcsym = binary_to_update.get_symbol(func_name)
     their_fn = binary_to_update.section_from_virtual_address(their_funcsym.value)
+    address=their_funcsym.value+offset
     if their_funcsym.size < len(my_code):
         dprint("WARNING: Code being injected is larger than original code")
         dprint("original size: {}".format(their_funcsym.size))
         dprint("patch size: {}".format(len(my_code)))
         dprint("Overrun size: {}".format(len(my_code)-their_funcsym.size))
-    return inject_code(binary_to_update,their_funcsym.value,my_code)
+    return inject_code(binary_to_update,address,my_code)
 
 def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=True):
     # this is for 32b
@@ -263,11 +269,12 @@ def generate_jump_from_dest_address(dest_address:int,offset:int=0):
 
 def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
                             dest_address:int,offset:int=0,
-                            func_list:list=None,func_dict:dict=None
+                            func_list:list=None,func_dict:dict=None,
+                            reg:str="ecx"
                            ):
     cur_offset=offset
     func_to_update = binary_to_update.get_symbol(func_name)
-    print("SYMBOL: Function {} @ offset 0x{:x}".format(func_name,func_to_update.value))
+    print("SYMBOL: Function {} @ offset 0x{:x}+0x{:x}".format(func_name,func_to_update.value,cur_offset))
     try:
         print("DYN SYMBOL: Function {} @ offset 0x{:x}".format(func_name,
           binary_to_update.get_dynamic_symbol(func_name).value
@@ -281,8 +288,12 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        rev_funclist.reverse()
        print("Function list: {}".format(rev_funclist))
        # pop off return address from stack
-       # pop ecx => 59
-       hex_string+=bytearray.fromhex("59")
+       # pop ecx => 59 => changing to edx because of a conflict with injecting into main
+       # pop edx => 5a
+       if reg == "ecx":
+           hex_string+=bytearray.fromhex("59")
+       else:
+           hex_string+=bytearray.fromhex("5a")
        cur_offset=len(hex_string)+offset
        for i in rev_funclist:
            address=func_dict[i]
@@ -291,15 +302,19 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
            hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
            cur_offset=len(hex_string)+offset
 
-       # push ecx => 51
-       hex_string+=bytearray.fromhex("51")
+       # push ecx => 51 => changing to edx because of a conflict with injecting into main
+       # push edx => 52
+       if reg == "ecx":
+           hex_string+=bytearray.fromhex("51")
+       else:
+           hex_string+=bytearray.fromhex("52")
        print("hex_string[{}] => {}".format(len(hex_string),hex_string));
     cur_offset=len(hex_string)+offset
     dprint("Original address: {:08x}".format(dest_address))
     hex_string += generate_jump_from_dest_address(dest_address,cur_offset)
     my_function_call = hex_string
     print("my_function_call[{}] => {}".format(len(my_function_call),my_function_call))
-    return change_function_content(binary_to_update,func_name,my_function_call)
+    return change_function_content(binary_to_update,func_name,my_function_call,offset)
 
 def replaceSymbol(binary:lief.Binary,orig_name:str,new_fn_name):
     # let's process the dynamic symbol first if it exists
@@ -348,7 +363,7 @@ def change_func_name(orig_name:str,new_name:str,binary:lief.Binary):
     return renamed_symbol
 
 def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:lief.Binary,
-    patch_fn_name:str, segment:lief.ELF.Segment=None):
+    patch_fn_name:str, bin_fn_name:str, segment:lief.ELF.Segment=None):
     """
     this function is lifted from LIEF example 05
      What it does is:
@@ -360,7 +375,7 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
        4) patches the PLT/GOT for the original function with new address (new segment + function offset)
        THIS ONLY WORKS WITH ORIGINAL FUNCTIONS THAT ARE IMPORTED
     """
-    their_fn = binary_to_update.get_symbol(patch_fn_name)
+    their_fn = binary_to_update.get_symbol(bin_fn_name)
     success = None
     if their_fn.imported and their_fn.is_function:
         if not segment:
@@ -370,7 +385,7 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
             dprint("Segment already exists: {}".format(segment))
         my_fn = patch_binary.get_symbol(patch_fn_name)
         my_fn_addr = segment.virtual_address + my_fn.value
-        binary_to_update.patch_pltgot(patch_fn_name,my_fn_addr)
+        binary_to_update.patch_pltgot(bin_fn_name,my_fn_addr)
         success = True
     else:
         if not their_fn.is_function:
@@ -382,7 +397,8 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
     return success,binary_to_update,segment
 
 def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_binary:lief.Binary,
-    patch_fn_name:str, segment:lief.ELF.Segment=None, ext_funcs:list=None):
+    patch_fn_name:str, bin_fn_name:str, bin_fn_offset:int=0,
+    segment:lief.ELF.Segment=None, ext_funcs:list=None, reg:str="ecx"):
     """
     this function is similar to LIEF example 05
      What it does is:
@@ -394,7 +410,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
        4) patches the original function with a JUMP to new address (new segment + function offset)
        THIS ONLY WORKS WITH ORIGINAL FUNCTIONS THAT ARE LOCAL
     """
-    their_fn = binary_to_update.get_symbol(patch_fn_name)
+    their_fn = binary_to_update.get_symbol(bin_fn_name)
     success = None
     extfncs = None if not ext_funcs else dict()
     
@@ -430,7 +446,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                 new_ptr_val=ptr_val+offset
                 new_code = new_ptr_val.to_bytes(4,byteorder='little' if little_endian else 'big')
                 address = section.virtual_address + sym_offset
-                binary_to_update.patch_address(address,new_ptr_val,4)
+                binary_to_update.patch_address(address+bin_fn_offset,new_ptr_val,4)
                 print("{} workaround - offset: {} , orig content: {}, expected content: {} or 0x{:x}".format(binary_to_update.name,address,content,new_code,new_ptr_val))
                 print("=> actual content: {}".format(section.content[sym_offset:sym_offset+4]))
 
@@ -439,7 +455,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         else:
             dprint("Segment already exists: {}".format(segment))
         
-        their_fn = binary_to_update.get_symbol(patch_fn_name)
+        their_fn = binary_to_update.get_symbol(bin_fn_name)
         if ext_funcs:
             mydecl=""
             for i in ext_funcs:
@@ -475,11 +491,11 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         fn_segment = binary_to_update.segment_from_virtual_address(their_fn.value)
         dprint("Their function segment: @ {:04x}".format(fn_segment.virtual_address))
         dprint("my function segment @ {:04x} + offset {:04x}".format(segment.virtual_address,my_fnsym.value))
-        renamed_fn = patch_fn_name
+        renamed_fn = bin_fn_name
         renamed_fnsym = binary_to_update.get_symbol(renamed_fn)
         if RENAME_FUNCTION:
-            renamed_fn = "m"+patch_fn_name
-            renamed_fnsym = change_func_name(patch_fn_name,renamed_fn,binary_to_update)
+            renamed_fn = "m"+bin_fn_name
+            renamed_fnsym = change_func_name(bin_fn_name,renamed_fn,binary_to_update)
         my_fn_addr = None
         segment_VA=segment.virtual_address
         if patch_binary.header.file_type == lief.ELF.E_TYPE.DYNAMIC:
@@ -521,7 +537,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             dprint("Relative offset from their function to patch function : {:04x}".format(my_fn_addr-their_fn.value))
             change_function_to_jump(binary_to_update,func_name=renamed_fn,
                                     dest_address=(my_fn_addr-their_fn.value),
-                                    func_list=ext_funcs,func_dict=extfncs
+                                    func_list=ext_funcs,func_dict=extfncs,
+                                    offset=bin_fn_offset,reg=reg
                                     )
             dprint("{:08x} => relative jump address [func.value] {:08x}".format(my_fn_addr,my_fn_addr-their_fn.value))
             dprint("{:08x} => relative jump address [func.value] {:08x} [their function value: {:08x}]".format(my_fn_addr,my_fn_addr-their_fn.value,their_fn.value))
@@ -690,7 +707,9 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             sys.exit(-1);
         change_function_to_jump(binary_to_update,func_name=renamed_fn,
                                 dest_address=(my_fn_addr-their_fn.value),
-                                func_list=ext_funcs,func_dict=extfncs)
+                                func_list=ext_funcs,func_dict=extfncs,
+                                offset=bin_fn_offset,reg=reg
+                                )
         dprint("content '{}' @ {:08x} ]".format(
                               bytearray(binary_to_update.get_content_from_virtual_address(segment.virtual_address,28)).hex(),
                               segment.virtual_address))
@@ -700,9 +719,9 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         success = True
     else:
         if not their_fn.is_function:
-            print("WARNING: function {patch_fn_name} isn't a function in binary to patch.")
+            print("WARNING: function {bin_fn_name} isn't a function in binary to patch.")
         if their_fn.imported:
-            print("WARNING: function {patch_fn_name} is imported in binary to patch.")
+            print("WARNING: function {bin_fn_name} is imported in binary to patch.")
         print("WARNING: Can't apply patch_pltgot method")
         success = False
     
@@ -725,7 +744,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     return success,binary_to_update,segment
 
 def inject_hook(inputbin:str,outputbin:str,hook_file:str,
-                override_functions:list,extFns:dict):
+                override_functions:list,extFns:dict,reg:str):
     # currently developed with assumption that functions being patched exist in input binary image
     # and not an external dynamic shared object/library
     #imported_libs = modifyme.imports
@@ -741,23 +760,39 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
     success = True
     segment = None
     dynlib  = None
-    for fn in override_functions:
-        external_funcs = None if ((not extFns) or (fn not in extFns)) else extFns[fn]
+    for fn_in in override_functions:
+        patchfn = fn_in
+        binfn = fn_in
+        binfn_offset=0
+        # if the patch function is different from binary function:
+        #   patch_fn:binary_fn
+        if ':' in fn_in:
+           fn_index = fn_in.find(":")
+           patchfn=fn_in[:fn_index]
+           binfn=fn_in[fn_index+1:]
+        if '+' in binfn:
+           offset_index = binfn.find('+')
+           binfn_offset=int(binfn[offset_index+1])
+           binfn=binfn[:offset_index]
+           print("Offset into {} is {} bytes".format(binfn,binfn_offset))
+
+        
+        external_funcs = None if ((not extFns) or (patchfn not in extFns)) else extFns[patchfn]
         my_fn=None
         their_fn=None
         try:
-            my_funcsym = hookme.get_symbol(fn)
+            my_funcsym = hookme.get_symbol(patchfn)
         except Exception as e:
-            print("ERROR: Couldn't find function '{}' in '{}'".format(fn,hook_filename))
+            print("ERROR: Couldn't find function '{}' in '{}'".format(patchfn,hook_filename))
             print("looked for '{}' in '{}'".format(my_funcsym.name,hook_filename))
             print("Tried to find '{}' in '{}'".format(my_funcsym.value,hook_filename))
             print(e)
             success = False
             raise e
         try:
-            their_funcsym = modifyme.get_symbol(fn)
+            their_funcsym = modifyme.get_symbol(binfn)
         except Exception as e:
-            print("ERROR: Couldn't find function '{}' in '{}'".format(fn,inputbin))
+            print("ERROR: Couldn't find function '{}' in '{}'".format(binfn,inputbin))
             print("looked for '{}' in '{}'".format(their_funcsym.name,inputbin))
             print("Tried to find '{}' in '{}'".format(their_funcsym.value,inputbin))
             print(e)
@@ -779,17 +814,20 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
                dprint("patching pltgot [function in added segment]")
                success,modifyme,segment = patch_pltgot_with_added_segment(modifyme,
                                                 hookme,
-                                                fn,
+                                                patchfn,
+                                                binfn,
                                                 segment)
             elif their_funcsym.is_function and not their_funcsym.imported:
                dprint("injecting jump to [function in added segment]")
                success,modifyme,segment = patch_func_with_jump_to_added_segment(modifyme,
                                                 hookme,
-                                                fn,
+                                                patchfn,
+                                                binfn,binfn_offset,
                                                 segment,
-                                                external_funcs)
+                                                external_funcs,
+                                                reg)
             else:
-               print("ERROR: {} is not a function in {}".format(fn,inputbin))
+               print("ERROR: {} is not a function in {}".format(patchfn,inputbin))
                print("\nExiting.\n")
                import sys
                sys.exit(-1);
@@ -811,6 +849,7 @@ def main(args):
     hook_cflags = args.cflags
     enable_diet = args.dietlibc
     genprog = args.genprog
+    reg = args.register
     if not args.nodate or genprog:
         hook_filename = "libhook."+dateinfo+".so"
     pfile=fn_fname
@@ -858,7 +897,7 @@ def main(args):
        dprint("binary source directory contents:\n[\n{}\n]".format(subprocess.check_output("ls {}".format(bin_src_dir))))
        dprint("ERROR: '{}' file does not exist in {}".format(bin_fullpath))
        return -1
-    status = inject_hook(bin_fullpath,out_fullpath,fn_fullpath,fn_list,external_funcs)
+    status = inject_hook(bin_fullpath,out_fullpath,fn_fullpath,fn_list,external_funcs,reg)
     if not status:
        print("Successfully stitched ALL '{}' into '{}' as output '{}'".format(fn_list,input_fname,output_fname))
        dprint("Hook lib is generated in '{}'".format(hook_filename))
