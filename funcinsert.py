@@ -297,7 +297,7 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        cur_offset=len(hex_string)+offset
        for i in rev_funclist:
            address=func_dict[i]
-           print("0x{:x} + 0x{:x} = 0x{:x}".format(func_to_update.value,cur_offset,
+           print("[{:s}] 0x{:x} + 0x{:x} = 0x{:x}".format(i,func_to_update.value,cur_offset,
            func_to_update.value+cur_offset))
            hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
            cur_offset=len(hex_string)+offset
@@ -413,7 +413,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     their_fn = binary_to_update.get_symbol(bin_fn_name)
     success = None
     extfncs = None if not ext_funcs else dict()
-    
+    final_note=None
     little_endian = True if binary_to_update.abstract.header.endianness == lief.ENDIANNESS.LITTLE else False
     if not their_fn.imported and their_fn.is_function:
         if not segment:
@@ -430,6 +430,9 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                 fixme=True
             if binary_to_update.name == "ASCII_Content_Server":
                 sym=binary_to_update.get_symbol("InitialInfo")
+                fixme=True
+            if binary_to_update.name == "HackMan":
+                sym=binary_to_update.get_symbol("words")
                 fixme=True
             if fixme:
                 esize= 8 if binary_to_update.header.identity_class == lief.ELF.ELF_CLASS.CLASS64 else 4
@@ -448,7 +451,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                 address = section.virtual_address + sym_offset
                 binary_to_update.patch_address(address+bin_fn_offset,new_ptr_val,4)
                 print("{} workaround - offset: {} , orig content: {}, expected content: {} or 0x{:x}".format(binary_to_update.name,address,content,new_code,new_ptr_val))
-                print("=> actual content: {}".format(section.content[sym_offset:sym_offset+4]))
+                print("=> UPDATED actual content: {}".format(section.content[sym_offset:sym_offset+4]))
 
                 
                 
@@ -458,28 +461,59 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         their_fn = binary_to_update.get_symbol(bin_fn_name)
         if ext_funcs:
             mydecl=""
+            mynotes=""
+            myfunc=""
+            requires_bind_now = False
             for i in ext_funcs:
-                mydecl+="void* {},".format(i)
                 try:
                    j=binary_to_update.get_symbol(i)
                    address=None
                    if j.imported:
                        try:
+                           print("|WARNING!!! symbol '{}' is IMPORTED!".format(i))
+                           print("| Please make sure '{}' is a ** type in '{}'".format(
+                           i,patch_binary.name))
                            xrelo=binary_to_update.get_relocation(i)
                            address=xrelo.address
+                           # because the GOT ADDRESS requires the original .got table offset 
+                           # to be in %ebx and the patch_binary has its own .got table locally,
+                           # the following won't work
+                           #got_address=xrelo.address
+                           #plt_address=binary_to_update.get_content_from_virtual_address(got_address,4)
+                           ## subtract 6 from .got address, since it contains the next address after the PLT JMP
+                           #address=int.from_bytes(plt_address,byteorder='little')-6
                        except:
                            print("ERROR! symbol '{}' cannot be resolved!".format(i))
                            import sys;sys.exit(1)
+                       finally:
+                           mydecl+=" void** my{},".format(i)
+                           myfunc+="|     {} = (p{})(*my{});\n".format(i,i,i)
+                           #mynotes+="| typedef <return type> (**p{})(<function params>);\n|  p{} {}=NULL;\n".format(i,i,i)
+                           requires_bind_now = True
                    else:
+                      mydecl+=" void* my{},".format(i)
+                      myfunc+="|     {} = (p{})my{};\n".format(i,i,i)
+                      #mynotes+="| typedef <return type> (*p{})(<function params>);\n|  p{} {}=NULL;\n".format(i,i,i)
                       address=j.value
+                   mynotes+="| typedef <return type> (*p{})(<function params>);\n|  p{} {}=NULL;\n".format(i,i,i)
                    extfncs[i]=address
                    dprint("External function: {} @ {}".format(i,hex(extfncs[i])))
                 except Exception as e:
                    print("Exception occurred when trying to find external function symbol {}".format(i))
                    print("ERROR: {}".format(e))
                    import sys; sys.exit(1)
-            print("| NOTE: expecting function declaration like so:\n")
-            print("| \t {}({}...)\n".format(patch_fn_name,mydecl))
+            final_note="| NOTE: expecting function declaration like so:\n|\n"
+            #print("| \t {}({}...);\n|".format(patch_fn_name,mydecl))
+            final_note+="| \n{}|\n".format(mynotes)
+            final_note+="| <return type> {}({}...){}\n{} ...\n{}".format(patch_fn_name,mydecl,'{',myfunc,'}')
+            #print(final_note)
+            #if requires_bind_now:
+            #   for i in binary_to_update.dynamic_entries:
+            #       if (lief.ELF.DynamicEntryLibrary == type(i)):
+            #          if "libc.so" not in i.name:
+            #              orig_tag=i.tag
+            #              i.tag =  lief.ELF.DYNAMIC_TAGS.BIND_NOW
+            #              dprint("Updated {} from {} to {}".format(i.name,orig_tag,i.tag))
         #import sys;sys.exit(1)
         dprint("Using Segment:\n[---- \n {}\n] -----\n@ 0x{:08x}".format(segment,segment.virtual_address))
         dprint("Segment type is :{}".format(segment.type))
@@ -488,7 +522,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                 their_fn.is_function, their_fn.is_static,
                 their_fn,their_fn.value 
                 ))
-        fn_segment = binary_to_update.segment_from_virtual_address(their_fn.value)
+        fn_segment = binary_to_update.concrete.segment_from_virtual_address(their_fn.value)
         dprint("Their function segment: @ {:04x}".format(fn_segment.virtual_address))
         dprint("my function segment @ {:04x} + offset {:04x}".format(segment.virtual_address,my_fnsym.value))
         renamed_fn = bin_fn_name
@@ -741,6 +775,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         dprint("lief.ELF.SEGMENT_TYPES.GNU_RELRO")
         binary_to_update[lief.ELF.SEGMENT_TYPES.GNU_RELRO].type = lief.ELF.SEGMENT_TYPES.NULL
     
+    if final_note:
+        print(final_note)
     return success,binary_to_update,segment
 
 def inject_hook(inputbin:str,outputbin:str,hook_file:str,
