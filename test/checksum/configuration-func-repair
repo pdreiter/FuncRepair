@@ -1,0 +1,21 @@
+--seed 0
+--disable-aslr
+--program patch_ex2.i
+--pos-tests 4
+--neg-tests 1
+--popsize 500
+--generations 200
+--compiler gcc
+--func-repair
+--func-repair-binary ./do_checksum
+--minimization
+--edit-script
+--do-not-instrument checksum
+--func-repair-fn-name checksum
+--func-repair-script ./funcinsert.py --genprog 
+--search brute
+--subatom-mutp 1.0
+--continue
+--func-repair-insert patch_ex2.c
+--trampoline-compiler-opts -m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now
+--trampoline-linker-opts -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc

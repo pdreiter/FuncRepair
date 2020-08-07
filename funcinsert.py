@@ -580,8 +580,9 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             dprint("Patch Binary's ELF class => {}".format(patch_binary.header.identity_class))
             default_entry_size= 8 if patch_binary.header.identity_class == lief.ELF.ELF_CLASS.CLASS64 else 4
             little_endian = True if patch_binary.abstract.header.endianness == lief.ENDIANNESS.LITTLE else False
-            plt_section_offset=patch_binary.concrete.get_section(".plt").offset
-            got_section_offset=patch_binary.concrete.get_section(".got").offset
+            #plt_section_offset=patch_binary.concrete.get_section(".plt").offset
+            #got_section_offset=patch_binary.concrete.get_section(".got").offset
+
             # now let's update the old contents of the .got.plt and .got sections of the 
             #  patch_binary to reflect the new segment offset
             #myPLT = dict()
@@ -940,7 +941,9 @@ def main(args):
     chmod_mask = os.stat(bin_fullpath).st_mode & 0o777
     os.chmod(out_fullpath,chmod_mask)
     if genprog:
-       if not status or not debug:
+       if debug:
+	   	   print("Not cleaning up debug info")
+       elif not status:
            os.remove(hook_filename)
        else:
            cleanup(bin_src_dir,hook_filename,input_fname,bin_fullpath,hook_cflags)

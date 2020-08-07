@@ -3,10 +3,13 @@
 
 char checksum(char *s)
 {
-   printf("original checksum\n");
+    //printf("original checksum\n");
     signed char sum = -1;
     while (*s != 0)
     {
+		if (*s == '0') {
+			return 0;
+		}
         sum += *s;
         s++;
     }
@@ -18,7 +21,7 @@ char checksum(char *s)
 
 
 int main(int argc, char **argv) {
-  printf("do_checksum:\n");
+  //printf("do_checksum:\n");
   fflush(stdout);
   if (argc != 2) {
     printf("Usage: %s <string> \n", argv[0]);
