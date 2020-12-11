@@ -1,0 +1,206 @@
+
+Symbol table '.dynsym' contains 1 entry:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+
+Symbol table '.symtab' contains 199 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 00000000     0 SECTION LOCAL  DEFAULT    1 
+     2: 00000024     0 SECTION LOCAL  DEFAULT    2 
+     3: 000000c0     0 SECTION LOCAL  DEFAULT    3 
+     4: 0000343f     0 SECTION LOCAL  DEFAULT    4 
+     5: 00003443     0 SECTION LOCAL  DEFAULT    5 
+     6: 00003447     0 SECTION LOCAL  DEFAULT    6 
+     7: 0000344e     0 SECTION LOCAL  DEFAULT    7 
+     8: 00003452     0 SECTION LOCAL  DEFAULT    8 
+     9: 00003456     0 SECTION LOCAL  DEFAULT    9 
+    10: 0000345c     0 SECTION LOCAL  DEFAULT   10 
+    11: 0000346c     0 SECTION LOCAL  DEFAULT   11 
+    12: 00003470     0 SECTION LOCAL  DEFAULT   12 
+    13: 000034a0     0 SECTION LOCAL  DEFAULT   13 
+    14: 000037a0     0 SECTION LOCAL  DEFAULT   14 
+    15: 00004a1c     0 SECTION LOCAL  DEFAULT   15 
+    16: 00004a38     0 SECTION LOCAL  DEFAULT   16 
+    17: 00004a48     0 SECTION LOCAL  DEFAULT   17 
+    18: 00004a60     0 SECTION LOCAL  DEFAULT   18 
+    19: 00004a90     0 SECTION LOCAL  DEFAULT   19 
+    20: 00004b58     0 SECTION LOCAL  DEFAULT   20 
+    21: 00004b5c     0 SECTION LOCAL  DEFAULT   21 
+    22: 00004b80     0 SECTION LOCAL  DEFAULT   22 
+    23: 00004c34     0 SECTION LOCAL  DEFAULT   23 
+    24: 00004c40     0 SECTION LOCAL  DEFAULT   24 
+    25: 00000000     0 SECTION LOCAL  DEFAULT   25 
+    26: 00000000     0 SECTION LOCAL  DEFAULT   26 
+    27: 00000000     0 FILE    LOCAL  DEFAULT  ABS mycoverage.c
+    28: 00000000     0 FILE    LOCAL  DEFAULT  ABS errno_location.c
+    29: 00000000     0 FILE    LOCAL  DEFAULT  ABS stackgap.c
+    30: 00000000     0 FILE    LOCAL  DEFAULT  ABS fflush.c
+    31: 00000000     0 FILE    LOCAL  DEFAULT  ABS fopen.c
+    32: 00000000     0 FILE    LOCAL  DEFAULT  ABS fprintf.c
+    33: 00000000     0 FILE    LOCAL  DEFAULT  ABS fwrite.c
+    34: 00000000     0 FILE    LOCAL  DEFAULT  ABS printf.c
+    35: 00000000     0 FILE    LOCAL  DEFAULT  ABS stdin.c
+    36: 00000000     0 FILE    LOCAL  DEFAULT  ABS stdout.c
+    37: 00000000     0 FILE    LOCAL  DEFAULT  ABS vfprintf.c
+    38: 00000000     0 FILE    LOCAL  DEFAULT  ABS vprintf.c
+    39: 00000000     0 FILE    LOCAL  DEFAULT  ABS __v_printf.c
+    40: 000012cc     0 NOTYPE  LOCAL  DEFAULT    3 .L146
+    41: 00001b88     0 NOTYPE  LOCAL  DEFAULT    3 .L225
+    42: 000017e2     0 NOTYPE  LOCAL  DEFAULT    3 .L42
+    43: 000012f6     0 NOTYPE  LOCAL  DEFAULT    3 .L41
+    44: 000017ee     0 NOTYPE  LOCAL  DEFAULT    3 .L226
+    45: 0000181f     0 NOTYPE  LOCAL  DEFAULT    3 .L39
+    46: 00001847     0 NOTYPE  LOCAL  DEFAULT    3 .L38
+    47: 00001853     0 NOTYPE  LOCAL  DEFAULT    3 .L125
+    48: 0000185f     0 NOTYPE  LOCAL  DEFAULT    3 .L37
+    49: 00001899     0 NOTYPE  LOCAL  DEFAULT    3 .L36
+    50: 00001962     0 NOTYPE  LOCAL  DEFAULT    3 .L32
+    51: 000018f1     0 NOTYPE  LOCAL  DEFAULT    3 .L27
+    52: 000018fe     0 NOTYPE  LOCAL  DEFAULT    3 .L35
+    53: 00001919     0 NOTYPE  LOCAL  DEFAULT    3 .L126
+    54: 0000194b     0 NOTYPE  LOCAL  DEFAULT    3 .L33
+    55: 00001304     0 NOTYPE  LOCAL  DEFAULT    3 .L30
+    56: 000012fb     0 NOTYPE  LOCAL  DEFAULT    3 .L31
+    57: 000015ec     0 NOTYPE  LOCAL  DEFAULT    3 .L22
+    58: 000015ff     0 NOTYPE  LOCAL  DEFAULT    3 .L29
+    59: 0000164d     0 NOTYPE  LOCAL  DEFAULT    3 .L28
+    60: 000016af     0 NOTYPE  LOCAL  DEFAULT    3 .L26
+    61: 00001780     0 NOTYPE  LOCAL  DEFAULT    3 .L25
+    62: 000017b2     0 NOTYPE  LOCAL  DEFAULT    3 .L127
+    63: 00000000     0 FILE    LOCAL  DEFAULT  ABS atexit.c
+    64: 00000000     0 FILE    LOCAL  DEFAULT  ABS errno.c
+    65: 00000000     0 FILE    LOCAL  DEFAULT  ABS isatty.c
+    66: 00000000     0 FILE    LOCAL  DEFAULT  ABS stack_smash_handler3.c
+    67: 00000000     0 FILE    LOCAL  DEFAULT  ABS strtol.c
+    68: 00000000     0 FILE    LOCAL  DEFAULT  ABS strtoul.c
+    69: 00000000     0 FILE    LOCAL  DEFAULT  ABS fdglue.c
+    70: 00000000     0 FILE    LOCAL  DEFAULT  ABS fdglue2.c
+    71: 00000000     0 FILE    LOCAL  DEFAULT  ABS fputc_unlocked.c
+    72: 00000000     0 FILE    LOCAL  DEFAULT  ABS __dtostr.c
+    73: 00000000     0 FILE    LOCAL  DEFAULT  ABS __lltostr.c
+    74: 00000000     0 FILE    LOCAL  DEFAULT  ABS __ltostr.c
+    75: 00000000     0 FILE    LOCAL  DEFAULT  ABS alloc.c
+    76: 00000000     0 FILE    LOCAL  DEFAULT  ABS isalnum.c
+    77: 00000000     0 FILE    LOCAL  DEFAULT  ABS isspace.c
+    78: 00000000     0 FILE    LOCAL  DEFAULT  ABS isxdigit.c
+    79: 00000000     0 FILE    LOCAL  DEFAULT  ABS memmove.c
+    80: 00000000     0 FILE    LOCAL  DEFAULT  ABS stack_smash_handler2.c
+    81: 00000000     0 FILE    LOCAL  DEFAULT  ABS 
+    82: 00000024     0 OBJECT  LOCAL  DEFAULT    2 _DYNAMIC
+    83: 00003280   447 FUNC    LOCAL  DEFAULT    3 __udivmoddi4
+    84: 0000071c     0 FUNC    LOCAL  DEFAULT    3 __thread_doexit
+    85: 00000f80    31 FUNC    LOCAL  DEFAULT    3 __fflush_stdout
+    86: 00004b5c     0 OBJECT  LOCAL  DEFAULT   21 _GLOBAL_OFFSET_TABLE_
+    87: 0000071c     0 FUNC    LOCAL  DEFAULT    3 __fflush_stderr
+    88: 00003456     0 FUNC    GLOBAL HIDDEN     9 __x86.get_pc_thunk.cx
+    89: 00001f20    20 FUNC    GLOBAL HIDDEN     3 __stack_chk_fail_local
+    90: 00005d44     4 OBJECT  GLOBAL DEFAULT   24 __tdataptr
+    91: 00001f4c     0 FUNC    GLOBAL DEFAULT    3 strcpy
+    92: 000011a0  3141 FUNC    GLOBAL DEFAULT    3 __v_printf
+    93: 00002594     7 FUNC    GLOBAL DEFAULT    3 ioctl
+    94: 00005d48     4 OBJECT  GLOBAL DEFAULT   24 __tdatasize
+    95: 00000ee0    37 FUNC    GLOBAL DEFAULT    3 printf
+    96: 00004be0     4 OBJECT  GLOBAL DEFAULT   22 stdout
+    97: 000031a0    84 FUNC    GLOBAL DEFAULT    3 memmove
+    98: 00000b50   141 FUNC    GLOBAL DEFAULT    3 __fflush4
+    99: 000007d0    51 FUNC    GLOBAL DEFAULT    3 getauxval
+   100: 0000326f     7 FUNC    GLOBAL DEFAULT    3 munmap
+   101: 0000344e     0 FUNC    GLOBAL HIDDEN     7 __x86.get_pc_thunk.di
+   102: 00005d68     0 OBJECT  GLOBAL DEFAULT   24 __stack_chk_guard
+   103: 000022f0    95 FUNC    GLOBAL DEFAULT    3 __stdio_parse_mode
+   104: 00000000     4 TLS     GLOBAL DEFAULT   23 errno
+   105: 00001ee7     0 FUNC    GLOBAL DEFAULT    3 memcpy
+   106: 00004c44     4 OBJECT  GLOBAL DEFAULT   24 __valgrind
+   107: 000025a0  1510 FUNC    GLOBAL DEFAULT    3 __dtostr
+   108: 00002e10   378 FUNC    WEAK   DEFAULT    3 malloc
+   109: 00001e80   103 FUNC    GLOBAL DEFAULT    3 isatty
+   110: 00000f60    31 FUNC    GLOBAL HIDDEN     3 __fflush_stdin
+   111: 00002cb0   206 FUNC    GLOBAL DEFAULT    3 __ltostr
+   112: 00005d4c     4 OBJECT  GLOBAL DEFAULT   24 __tcb_mainthread
+   113: 0000343f     0 FUNC    GLOBAL HIDDEN     4 __x86.get_pc_thunk.ax
+   114: 00002080   609 FUNC    GLOBAL DEFAULT    3 strtoul
+   115: 00005d50     4 OBJECT  GLOBAL DEFAULT   24 __vdso
+   116: 00000810   581 FUNC    GLOBAL DEFAULT    3 stackgap
+   117: 00003160    25 FUNC    WEAK   DEFAULT    3 isspace
+   118: 00000a60   223 FUNC    WEAK   DEFAULT    3 fflush
+   119: 00000b40    14 FUNC    GLOBAL DEFAULT    3 __stdio_flushall
+   120: 000010b9     0 FUNC    WEAK   DEFAULT    3 lseek
+   121: 00002fd0   346 FUNC    GLOBAL DEFAULT    3 __libc_realloc
+   122: 00004c40     4 OBJECT  WEAK   DEFAULT   24 __environ
+   123: 00003240    33 FUNC    GLOBAL DEFAULT    3 mmap
+   124: 000006e5     0 FUNC    GLOBAL DEFAULT    3 _Exit
+   125: 00005d68     4 OBJECT  GLOBAL HIDDEN    24 __guard
+   126: 00003200    36 FUNC    GLOBAL DEFAULT    3 __stack_chk_fail
+   127: 00003452     0 FUNC    GLOBAL HIDDEN     8 __x86.get_pc_thunk.dx
+   128: 0000071c     0 FUNC    WEAK   HIDDEN     3 ftrylockfile
+   129: 00003180    32 FUNC    WEAK   DEFAULT    3 isxdigit
+   130: 00001f80   241 FUNC    GLOBAL DEFAULT    3 strtol
+   131: 00002f90    56 FUNC    WEAK   DEFAULT    3 calloc
+   132: 000010ce     0 FUNC    WEAK   DEFAULT    3 write
+   133: 00004c40     4 OBJECT  WEAK   DEFAULT   24 environ
+   134: 0000258d     7 FUNC    GLOBAL DEFAULT    3 fstat
+   135: 00000c70    41 FUNC    GLOBAL DEFAULT    3 fprintf
+   136: 00005d54     4 OBJECT  GLOBAL DEFAULT   24 __modern_linux
+   137: 00001060    89 FUNC    GLOBAL DEFAULT    3 vprintf
+   138: 00003261     7 FUNC    GLOBAL DEFAULT    3 __mmap2
+   139: 0000071c     0 FUNC    GLOBAL HIDDEN     3 __you_tried_to_link_a_die
+   140: 00003268     7 FUNC    GLOBAL DEFAULT    3 mremap
+   141: 00004b80     4 OBJECT  GLOBAL DEFAULT   22 stdin
+   142: 000000c0    29 NOTYPE  GLOBAL DEFAULT    3 _start
+   143: 00003160    25 FUNC    GLOBAL DEFAULT    3 __isspace_ascii
+   144: 00002e10   378 FUNC    GLOBAL DEFAULT    3 __libc_malloc
+   145: 00002d80   133 FUNC    GLOBAL DEFAULT    3 __libc_free
+   146: 00005d58     4 OBJECT  GLOBAL DEFAULT   24 program_invocation_short_
+   147: 0000071c     0 FUNC    WEAK   HIDDEN     3 funlockfile
+   148: 00000c20    77 FUNC    GLOBAL DEFAULT    3 fopen_unlocked
+   149: 00002fd0   346 FUNC    WEAK   DEFAULT    3 realloc
+   150: 00003443     0 FUNC    GLOBAL HIDDEN     5 __x86.get_pc_thunk.bx
+   151: 00000711     0 FUNC    GLOBAL DEFAULT    3 __error_unified_syscall
+   152: 00002586     7 FUNC    GLOBAL DEFAULT    3 __libc_close
+   153: 00005d5c     4 OBJECT  GLOBAL DEFAULT   24 __tmemsize
+   154: 00001f34     0 FUNC    WEAK   DEFAULT    3 index
+   155: 00000c20    77 FUNC    WEAK   DEFAULT    3 fopen
+   156: 000010c0     7 FUNC    GLOBAL DEFAULT    3 __libc_open
+   157: 00001efd     0 FUNC    GLOBAL DEFAULT    3 memset
+   158: 00000375   875 FUNC    GLOBAL DEFAULT    3 main
+   159: 000006e7    54 FUNC    GLOBAL DEFAULT    3 __unified_syscall
+   160: 00003226     0 FUNC    GLOBAL DEFAULT    3 __write1
+   161: 00003180    32 FUNC    GLOBAL DEFAULT    3 __isxdigit_ascii
+   162: 00003130    34 FUNC    GLOBAL DEFAULT    3 isalnum
+   163: 00001e30    75 FUNC    GLOBAL DEFAULT    3 __libc_exit
+   164: 00005d40     4 OBJECT  GLOBAL DEFAULT   24 _coverage_fout
+   165: 00001df0    54 FUNC    GLOBAL DEFAULT    3 atexit
+   166: 00003224     0 FUNC    GLOBAL DEFAULT    3 __write2
+   167: 0000071c     0 FUNC    WEAK   HIDDEN     3 flockfile
+   168: 00000f10    67 FUNC    GLOBAL DEFAULT    3 __stdin_is_tty
+   169: 000024b0   214 FUNC    WEAK   DEFAULT    3 fputc
+   170: 000010b9     7 FUNC    GLOBAL DEFAULT    3 __libc_lseek
+   171: 00002350   347 FUNC    GLOBAL DEFAULT    3 __stdio_init_file
+   172: 00000a60   223 FUNC    GLOBAL DEFAULT    3 fflush_unlocked
+   173: 00000be0    54 FUNC    GLOBAL DEFAULT    3 __stdio_outs
+   174: 00000ca0   574 FUNC    GLOBAL DEFAULT    3 fwrite_unlocked
+   175: 00000ca0   574 FUNC    WEAK   DEFAULT    3 fwrite
+   176: 00004c4c     4 OBJECT  GLOBAL DEFAULT   24 __stdio_atexit
+   177: 00002f90    56 FUNC    GLOBAL DEFAULT    3 __libc_calloc
+   178: 00002b90   288 FUNC    GLOBAL DEFAULT    3 __lltostr
+   179: 00000720    24 FUNC    WEAK   DEFAULT    3 __errno_location
+   180: 00001e30    75 FUNC    GLOBAL DEFAULT    3 exit
+   181: 00005d64     4 OBJECT  GLOBAL DEFAULT   24 __stdio_root
+   182: 0000071c     0 FUNC    WEAK   HIDDEN     3 __nop
+   183: 00000348    45 FUNC    GLOBAL DEFAULT    3 checksum
+   184: 00000740   142 FUNC    GLOBAL DEFAULT    3 __setup_tls
+   185: 000006e5     2 FUNC    GLOBAL DEFAULT    3 _exit
+   186: 000006e0     5 FUNC    GLOBAL DEFAULT    3 __unified_syscall_256
+   187: 00001f64    17 FUNC    GLOBAL DEFAULT    3 strlen
+   188: 000010c0     0 FUNC    WEAK   DEFAULT    3 open
+   189: 00005d60     4 OBJECT  GLOBAL DEFAULT   24 program_invocation_name
+   190: 000010ce     7 FUNC    GLOBAL DEFAULT    3 __libc_write
+   191: 00002350   347 FUNC    GLOBAL DEFAULT    3 __stdio_init_file_nothrea
+   192: 00001f34     0 FUNC    GLOBAL DEFAULT    3 strchr
+   193: 000024b0   214 FUNC    GLOBAL DEFAULT    3 fputc_unlocked
+   194: 00002586     0 FUNC    WEAK   DEFAULT    3 close
+   195: 00000fd0    89 FUNC    GLOBAL DEFAULT    3 vfprintf
+   196: 000010c7     7 FUNC    GLOBAL DEFAULT    3 set_thread_area
+   197: 000000dd   619 FUNC    GLOBAL DEFAULT    3 mychecksum
+   198: 00002d80   133 FUNC    WEAK   DEFAULT    3 free

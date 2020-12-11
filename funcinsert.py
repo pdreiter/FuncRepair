@@ -62,8 +62,8 @@ def parse_arguments():
     parser.add_argument('--nodietlibc',dest='dietlibc', action='store_const', const=False,
                         default=True,
                         help='Do not use "dietlibc" (default is to use "dietlibc")')
-    parser.add_argument('--compiler',dest='compiler', action='store', default='gcc',
-                        help='Specify compiler (default is "gcc")')
+    parser.add_argument('--compiler',dest='compiler', action='store', default='gcc-8',
+                        help='Specify compiler (default is "gcc-8")')
     parser.add_argument('--use-edx-reg',dest='register', action='store_const', const="edx",
                         default="ecx",
                         help='Use %edx register and not the %ecx register for push/pops when manipulating stack on function E9 jump'

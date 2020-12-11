@@ -8,7 +8,8 @@ SHELL:=/bin/bash
 
 BIN:=do_checksum
 
-MYSRC:=patch_ex2.c
+MYSRC:=patch_ex1.c
+MYREP:=repair.c
 #MYSRC:=mycoverage.c
 #MYSRC:=decompiled_source.c
 MYINT:=$(patsubst %.c,%.i, $(MYSRC))
@@ -20,9 +21,9 @@ EXTERNAL_FUNCS:=
 
 #external scripts/tools
 FUNCREP="${PRD_BASE_DIR}/funcinsert.py"
-DIET_GCC:=${DIET32PATH}/diet_gcc
+#DIET_GCC:=${DIET32PATH}/diet_gcc
 #DIET_GCC:=${DIET64PATH}/diet_gcc
-#DIET_GCC:=gcc
+DIET_GCC:=gcc
 
 # directories
 TMPDIR:=tmp
@@ -48,7 +49,7 @@ $(MYSRC):
 	@rm -f $(OBJDIR)/$(MYOBJ)
 	@rm -f $(MYINT)
 
-.PHONY: $(MYSRC)
+.PHONY: $(MYSRC) repair
 
 $(OBJDIR)/$(MYOBJ): $(MYSRC) $(DEP_OBJS)
 	@mkdir -p $(OBJDIR)
@@ -89,6 +90,11 @@ genprog_cmd:
 #	@mv $(TMPDIR)/decompiled_source.i .
 
 all_c: hook
+
+repair:
+	$(DIET_GCC) $(DEFAULT_FLAGS) --save-temps -c $(MYREP) -o $(OBJDIR)/repair.o  $(INCDIRS)
+	$(DIET_GCC) $(DEFAULT_FLAGS) -o libhook.so $(OBJDIR)/repair.o $(LDFLAGS) $(INCDIRS)
+	$(FUNCREP) --do-not-override-so --bin $(BIN) --outbin $(BIN).repaired --fn $(MYREP) $(REPLACEME) $(EXTERNAL_FUNCS)
 
 funcinsert: hook
 	$(FUNCREP) --do-not-override-so --bin $(BIN) --outbin $(BIN).trampoline.bin --fn $(MYSRC) $(REPLACEME) $(EXTERNAL_FUNCS)

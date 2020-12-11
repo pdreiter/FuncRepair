@@ -1,6 +1,6 @@
 --seed 0
 --disable-aslr
---program patch_ex2.i
+--program patch_ex1.i
 --pos-tests 4
 --neg-tests 1
 --popsize 500
@@ -16,6 +16,6 @@
 --search brute
 --subatom-mutp 1.0
 --continue
---func-repair-insert patch_ex2.c
+--func-repair-insert patch_ex1.c
 --trampoline-compiler-opts -m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now
 --trampoline-linker-opts -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc

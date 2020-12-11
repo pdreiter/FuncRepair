@@ -1,0 +1,283 @@
+GenProg Version: Mon Jun 29 15:45:59 MST 2020
+
+--allow-coverage-fail false
+--appp 0.33333
+--best-edit-rule "1 * fault_loc_weight ; 1 * max_test_fail_prob ; -1 * num_tests"
+--best-test-rule "1 * test_fail_prob ; 1 * test_fail_count ; -1 * test_pass_count"
+--blacklist-atoms ?
+--blacklist-src-functions ?
+--clone-file ""
+--compiler "gcc"
+--compiler-command ""
+--compiler-opts ""
+--continue true
+--coverage-info ""
+--coverage-per-test false
+--crossover "one"
+--crossp 0.5
+--delp 0.33333
+--describe-machine false
+--disable-aslr true
+--disable-reduce-fix-space false
+--disable-reduce-search-space false
+--diversity-selection 0
+--do-not-instrument ?
+--edit-script true
+--eviction-strategy "random"
+--exclude-edits ""
+--exp-diff false
+--fault-file ""
+--fault-path "coverage.path.neg"
+--fault-path-per-test false
+--fault-scheme "path"
+--fitness-in-parallel 1
+--fitness-log ""
+--fix-file ""
+--fix-oracle ""
+--fix-path "coverage.path.pos"
+--fix-path-per-test false
+--fix-scheme "default"
+--flatten-path "last"
+--format "txt"
+--func-repair true
+--func-repair-binary "./do_checksum"
+--func-repair-fn-name "checksum"
+--func-repair-insert "patch_ex2.c"
+--func-repair-script "./funcinsert.py --genprog "
+--gen-per-exchange 1
+--generations 200
+--geomp 0.5
+--gui false
+--hostname "127.0.0.1"
+--ignore-dead-code false
+--ignore-equiv-appends false
+--ignore-standard-headers false
+--ignore-string-equiv-fixes false
+--ignore-untyped-returns false
+--incoming-pop ""
+--keep-source false
+--label-repair false
+--lase-deallocation-api "free"
+--lase-paired-functions ""
+--lasep 0
+--max-evals 0
+--minimization true
+--mt-cov false
+--multiopt-minimize false
+--multiopt-no-inf false
+--name-in-test-cache false
+--neg-tests 1
+--neg-weight 1
+--negative-test-weight 2
+--nested false
+--neutral-walk-max-size 0
+--neutral-walk-weight ""
+--nht-id "global"
+--nht-port 51000
+--nht-server ""
+--no-rep-cache false
+--no-test-cache false
+--num-comps 2
+--num-fitness-samples 1
+--num-objectives 2
+--oracle-dump-rep-only false
+--oracle-genome ""
+--orig-rep-out "original"
+--pd-mutp 0.25
+--popsize 500
+--port 60000
+--pos-tests 4
+--pos-weight 0.1
+--prefix "./"
+--preprocessor ""
+--print-incremental-evals false
+--print-source-name false
+--program "patch_ex2.i"
+--promut 1
+--quiet false
+--regen-paths false
+--rep ""
+--rep-cache ""
+--repp 0
+--samp-strat "variant"
+--sample 1
+--sample-runs 100
+--sanity "default"
+--search "brute"
+--seed 0
+--semantic-check "exact"
+--single-fitness false
+--skip-failed-sanity-tests false
+--skip-tests ""
+--split-search 0
+--sport 65000
+--subatom-constp 0.5
+--subatom-mutp 1
+--swap-bug false
+--swapp 0.33333
+--template-cache ""
+--templates ""
+--test-command ""
+--test-script "./test.sh"
+--tournament-size 2
+--trampoline-compiler-opts "-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now"
+--trampoline-debug false
+--trampoline-linker-opts "-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc"
+--trampoline-nodietlibc false
+--uniq false
+--use-global-source-cache false
+--use-partition -1
+--valgrind false
+--variants-exchanged 50
+--version false
+--whitelist-atoms ?
+--whitelist-src-files ?
+cilRep: preprocessing IO function signatures: /tmp/tmp2fcea6.c /tmp/tmpe6aa05.c
+trampoline preprocess command: 
+gcc -E /tmp/tmp2fcea6.c -I /home/bss-lab-1/FunctionRepair/FuncRepair/stdlibc-src -I /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum -m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc > /tmp/tmpe6aa05.c
+cil_parsing /tmp/tmpe6aa05.c
+cilRep: done preprocessing IO function signatures
+faultLocRep: compute_localization: fault_scheme: path, fix_scheme: default
+WARNING: grabbing coverage from existing path files, so SFL will not work.
+cachingRep: patch_ex2.cache: loaded
+faultlocRep: patch_ex2.cache: loaded
+cilRep: patch_ex2.cache: loaded
+cilRep: patch_ex2.cache: saved
+cachingRep: patch_ex2.cache: saved
+faultlocRep: patch_ex2.cache: saved
+cilrep done serialize
+cilRep: stmt_count = 24
+cilRep: stmts in weighted_path = 10
+cilRep: total weight = 1.5
+cilRep: stmts in weighted_path with weight >= 1.0 = 1
+cilRep: patch_ex2.i (code bank/base file; atoms [1,25])
+cilRep: 1 file(s) total in representation
+search: reduce_fix_space
+cilRep: shared size: 0.0630569 MB
+cilRep: private size: 0.0365553 MB
+rep: fault_localization atoms: size=10 [4;8;1;3;10;7;11;9;6;2;]
+rep: fix_localization atoms:  size=10  [4;8;1;3;10;7;11;9;6;2;]
+search: brute_force_1 begins
+search: counting available mutants
+search: 191 mutants in search space
+	variant 0/1/191 (w: 0) s(4,8)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000000 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000000.c checksum 2>/dev/null >/dev/null
+	variant 0/2/191 (w: 0) s(4,9)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000001 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000001.c checksum 2>/dev/null >/dev/null
+	variant 0/3/191 (w: 0) s(4,10)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000002 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000002.c checksum 2>/dev/null >/dev/null
+	variant 0/4/191 (w: 0) s(4,11)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000003 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000003.c checksum 2>/dev/null >/dev/null
+	variant 0/5/191 (w: 0.0015873) s(4,1)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000004 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000004.c checksum 2>/dev/null >/dev/null
+	variant 0/6/191 (w: 0.0015873) s(4,2)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000005 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000005.c checksum 2>/dev/null >/dev/null
+	variant 0/7/191 (w: 0.0015873) s(4,3)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000006 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000006.c checksum 2>/dev/null >/dev/null
+	variant 0/8/191 (w: 0.0015873) s(4,6)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000007 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000007.c checksum 2>/dev/null >/dev/null
+	variant 0/9/191 (w: 0.015873) s(4,7)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000008 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000008.c checksum 2>/dev/null >/dev/null
+	variant 0/10/191 (w: 0.00222222) a(4,1)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000009 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000009.c checksum 2>/dev/null >/dev/null
+	variant 0/11/191 (w: 0.00222222) a(4,2)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000010 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000010.c checksum 2>/dev/null >/dev/null
+	variant 0/12/191 (w: 0.00222222) a(4,3)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000011 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000011.c checksum 2>/dev/null >/dev/null
+	variant 0/13/191 (w: 0.00222222) a(4,4)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000012 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000012.c checksum 2>/dev/null >/dev/null
+	variant 0/14/191 (w: 0.00222222) a(4,6)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000013 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000013.c checksum 2>/dev/null >/dev/null
+	variant 0/15/191 (w: 0.00222222) a(4,7)
+	variant 0/16/191 (w: 0.00222222) a(4,8)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000014 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000014.c checksum 2>/dev/null >/dev/null
+	variant 0/17/191 (w: 0.00222222) a(4,9)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000015 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000015.c checksum 2>/dev/null >/dev/null
+	variant 0/18/191 (w: 0.00222222) a(4,10)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000016 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000016.c checksum 2>/dev/null >/dev/null
+	variant 0/19/191 (w: 0.00222222) a(4,11)
+	variant 0/20/191 (w: 0.0222222) d(4)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000017 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000017.c checksum 2>/dev/null >/dev/null
+	variant 0/21/191 (w: 0) s(8,9)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000018 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000018.c checksum 2>/dev/null >/dev/null
+	variant 0/22/191 (w: 0) s(8,10)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000019 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000019.c checksum 2>/dev/null >/dev/null
+	variant 0/23/191 (w: 0) s(8,11)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000020 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000020.c checksum 2>/dev/null >/dev/null
+	variant 0/24/191 (w: 0) s(8,1)
+	variant 0/25/191 (w: 0) s(8,2)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000021 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000021.c checksum 2>/dev/null >/dev/null
+	variant 0/26/191 (w: 0) s(8,3)
+	variant 0/27/191 (w: 0) s(8,4)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000022 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000022.c checksum 2>/dev/null >/dev/null
+
+Repair Found: s(8,6)
+Repair Name: s(8,6)
+Test Cases Skipped: ""
+Current Time: 1596758013.293193
+cilRep: shared size: 0.0630569 MB
+cilRep: private size: 0.0390329 MB
+GOOD NEWS: original script passes!
+Entering delta, pass number 1...
+	variant 1/28/191 (w: 0) s(8,6)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000023 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000023.c checksum 2>/dev/null >/dev/null
+	variant 1/29/191 (w: 0) s(8,7)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000024 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000024.c checksum 2>/dev/null >/dev/null
+	variant 1/30/191 (w: 0) a(8,1)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000025 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000025.c checksum 2>/dev/null >/dev/null
+	variant 1/31/191 (w: 0) a(8,2)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000026 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000026.c checksum 2>/dev/null >/dev/null
+	variant 1/32/191 (w: 0) a(8,3)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000027 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000027.c checksum 2>/dev/null >/dev/null
+	variant 1/33/191 (w: 0) a(8,4)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000028 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000028.c checksum 2>/dev/null >/dev/null
+	variant 1/34/191 (w: 0) a(8,6)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000029 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000029.c checksum 2>/dev/null >/dev/null
+	variant 1/35/191 (w: 0) a(8,7)
+	variant 1/36/191 (w: 0) a(8,8)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000030 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000030.c checksum 2>/dev/null >/dev/null
+	variant 1/37/191 (w: 0) a(8,9)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000031 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000031.c checksum 2>/dev/null >/dev/null
+	variant 1/38/191 (w: 0) a(8,10)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000032 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000032.c checksum 2>/dev/null >/dev/null
+	variant 1/39/191 (w: 0) a(8,11)
+	variant 1/40/191 (w: 0) d(8)
+	variant 1/41/191 (w: 0) s(1,8)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000033 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000033.c checksum 2>/dev/null >/dev/null
+	variant 1/42/191 (w: 0) s(1,9)
+trampoline command: 
+./funcinsert.py --genprog  --compiler gcc --hook-cflags 'COMPILE(-m32 -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now):LINK(-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -Ilibsrc)' --bin ./do_checksum --outbin /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000034 --fn /home/bss-lab-1/FunctionRepair/FuncRepair/test/checksum/./000034.c checksum 2>/dev/null >/dev/null
