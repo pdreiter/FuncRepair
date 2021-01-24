@@ -930,7 +930,7 @@ def main(args):
     #if not os.path.exists(os.path.realpath(bin_fullpath)):
     if not os.path.isfile(bin_fullpath):
        import subprocess,shlex
-       print("ERROR: '{}' file does not exist in {}".format(bin_fullpath))
+       print("ERROR: '{}' file does not exist in {}".format(input_fname,bin_fullpath))
        dprint("binary source directory contents:\n[\n{}\n]".format(subprocess.check_output("ls {}".format(bin_src_dir))))
        dprint("ERROR: '{}' file does not exist in {}".format(bin_fullpath))
        return -1

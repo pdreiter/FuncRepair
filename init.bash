@@ -20,6 +20,10 @@ if which python3.6; then
    echo ""
    echo " sudo -H pip2 install pyyaml"
    echo " sudo -H pip2 install matplotlib"
+   echo "    -OR- "
+   echo " pip2 install pyyaml --user"
+   echo " pip2 install matplotlib --user"
+
    
 else
    echo "This infrastructure tested with 'python3.6' installed"
@@ -40,7 +44,7 @@ if [ -z $VIRTUAL_ENV ]; then
       source prd-env/bin/activate
       echo "Virtual environment @ $VIRTUAL_ENV is activated."
       echo "Installing requirements" 
-      pip install -f requirements.txt
+      pip install -r requirements.txt
       #pip install -c constraints.txt
    else
       echo "Need python3 virtual environment installed"
