@@ -5,7 +5,17 @@
 # to be exported to encompassing environment
 #-----------------------------------------------------
 export PRD_BASE_DIR=$(realpath .)
-git submodule update --init --recursive
+git submodule update --init 
+
+if [[ -d "genprog-code-func-repair" ]]; then 
+	pushd genprog-code-func-repair
+	git checkout function-based-repair
+	popd
+fi
+if [[ -d "cgc/cb-multios" ]]; then 
+  pushd cgc/cb-multios && git checkout genprog_afr_prd && popd
+fi
+
 
 # virtual environment
 if which python3.6; then
