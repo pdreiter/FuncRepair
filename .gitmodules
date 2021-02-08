@@ -1,0 +1,8 @@
+[submodule "cgc/cb-multios"]
+	path = cgc/cb-multios
+	url = https://github.com/pdreiter/cb-multios-prd.git
+	branch = genprog_afr_prd
+[submodule "genprog-code-func-repair"]
+	path = genprog-code-func-repair
+	url = https://github.com/pdreiter/genprog-code-prd.git
+	branch = function-based-repair

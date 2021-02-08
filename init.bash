@@ -5,6 +5,7 @@
 # to be exported to encompassing environment
 #-----------------------------------------------------
 export PRD_BASE_DIR=$(realpath .)
+git submodule update --init --recursive
 
 # virtual environment
 if which python3.6; then
@@ -69,12 +70,12 @@ if [[ ! -d "${libinstall_dir}/glibc-${glibc_ver}" ]]; then
     popd 
 fi 
 
-if [[ ! -d "genprog-code-func-repair" ]]; then
-    git clone https://github.com/pdreiter/genprog-code-prd.git genprog-code-func-repair
-	pushd genprog-code-func-repair
-	git pull https://github.com/pdreiter/genprog-code-prd.git function-based-repair
-	popd
-fi
+#if [[ ! -d "genprog-code-func-repair" ]]; then
+#    git clone https://github.com/pdreiter/genprog-code-prd.git genprog-code-func-repair
+#	pushd genprog-code-func-repair
+#	git pull https://github.com/pdreiter/genprog-code-prd.git function-based-repair
+#	popd
+#fi
 
 if [[ ! -d "${libinstall_dir}/dietlibc" ]]; then
    mkdir -p ${libinstall_dir}/dietlibc
@@ -143,9 +144,9 @@ pushd ${CGC_BASE_DIR}
 #[[ ! -d "${CGC_BASE_DIR}/pov-xml2c" ]] && \
 #  git clone https://github.com/pdreiter/pov-xml2c.git
 
-[[ ! -d "${CGC_BASE_DIR}/cb-multios" ]] && \
-  git clone https://github.com/pdreiter/cb-multios-prd.git cb-multios && \
-  pushd cb-multios && git checkout genprog_afr_prd && popd
+#[[ ! -d "${CGC_BASE_DIR}/cb-multios" ]] && \
+#  git clone https://github.com/pdreiter/cb-multios-prd.git cb-multios && \
+#  pushd cb-multios && git checkout genprog_afr_prd && popd
 
 export CGC_CB_DIR=${CGC_BASE_DIR}/cb-multios
 
