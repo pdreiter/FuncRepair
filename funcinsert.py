@@ -363,7 +363,7 @@ def change_func_name(orig_name:str,new_name:str,binary:lief.Binary):
     return renamed_symbol
 
 def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:lief.Binary,
-    patch_fn_name:str, bin_fn_name:str, segment:lief.ELF.Segment=None):
+    patch_fn_name:str, bin_fn_name:str, segment:lief.ELF.Segment=None, sgmt_index=0):
     """
     this function is lifted from LIEF example 05
      What it does is:
@@ -379,8 +379,8 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
     success = None
     if their_fn.imported and their_fn.is_function:
         if not segment:
-            dprint("Adding Segment: {}".format(patch_binary.segments[0]))
-            segment = binary_to_update.add(patch_binary.segments[0])
+            dprint("Adding Segment: {}".format(patch_binary.segments[sgmnt_index]))
+            segment = binary_to_update.add(patch_binary.segments[sgmnt_index])
         else:
             dprint("Segment already exists: {}".format(segment))
         my_fn = patch_binary.get_symbol(patch_fn_name)
@@ -398,7 +398,7 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
 
 def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_binary:lief.Binary,
     patch_fn_name:str, bin_fn_name:str, bin_fn_offset:int=0,
-    segment:lief.ELF.Segment=None, ext_funcs:list=None, reg:str="ecx"):
+    segment:lief.ELF.Segment=None, ext_funcs:list=None, reg:str="ecx",segment_index=0):
     """
     this function is similar to LIEF example 05
      What it does is:
@@ -418,8 +418,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
     if not their_fn.imported and their_fn.is_function:
         if not segment:
             #binary_to_update.write("orig_bin.bin")
-            dprint("Adding Segment:\n[----- \n {}\n] -----".format(patch_binary.segments[0]))
-            patch_segments = patch_binary.segments[0]
+            dprint("Adding Segment:\n[----- \n {}\n] -----".format(patch_binary.segments[segment_index]))
+            patch_segments = patch_binary.segments[segment_index]
             orig_rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
             segment = binary_to_update.add(patch_segments)
             binary_to_update.write("added_seg.bin")
@@ -523,8 +523,14 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                 their_fn,their_fn.value 
                 ))
         fn_segment = binary_to_update.concrete.segment_from_virtual_address(their_fn.value)
+        segment_offset=patch_binary.segments[segment_index].file_offset
+        if segment_offset == 0x1000:
+            # this is a weird LIEF bug when PHDRS isn't used \
+            # and linker creates a single SEGMENT output [see script.ld]
+            segment_offset=0
         dprint("Their function segment: @ {:04x}".format(fn_segment.virtual_address))
-        dprint("my function segment @ {:04x} + offset {:04x}".format(segment.virtual_address,my_fnsym.value))
+        dprint("my function segment @ {:04x} + offset {:04x} - segment offset: {:04x}".format(
+        segment.virtual_address,my_fnsym.value,segment_offset))
         renamed_fn = bin_fn_name
         renamed_fnsym = binary_to_update.get_symbol(renamed_fn)
         if RENAME_FUNCTION:
@@ -534,7 +540,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         segment_VA=segment.virtual_address
         if patch_binary.header.file_type == lief.ELF.E_TYPE.DYNAMIC:
             dprint("DYNAMIC PATCH BINARY")
-            my_fn_addr = segment.virtual_address + my_fnsym.value
+            my_fn_addr = segment.virtual_address + my_fnsym.value - segment_offset
             dprint("Relative offset from their function to patch function : {:04x}".format(my_fn_addr-their_fn.value))
             dprint("{:08x} => relative jump address [func.value] {:08x}".format(my_fn_addr,my_fn_addr-their_fn.value))
             dprint("{:08x} => relative jump address [func.value] {:08x} [their function value: {:08x}]".format(my_fn_addr,my_fn_addr-their_fn.value,their_fn.value))
@@ -547,9 +553,16 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             dprint("segment content @ {:x} : {}".format(
                           binary_to_update.virtual_address_to_offset(segment_VA),
                           bytearray(binary_to_update.get_content_from_virtual_address(segment_VA,28)).hex()))
-            dprint("offset {:x} [ virtual address {:08x} ]".format(
+            try: 
+                dprint("offset {:x} [ virtual address {:08x} ]".format(
                           binary_to_update.virtual_address_to_offset(my_fn_addr),
                           my_fn_addr))
+            except Exception as e:
+                print(e)
+                print("Virtual address being checked: {:08x} ]".format(my_fn_addr))
+                success = False
+                raise e
+                
         else:
             dprint("STATIC PATCH BINARY")
             dprint("new segment's file_offset => {:08x}".format(segment.file_offset))
@@ -846,6 +859,13 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
             success = False
             modified = None
             my_fn = hookme.section_from_virtual_address(my_funcsym.value)
+            my_seg=my_fn.segments[0]
+            segment_index=0
+            for j,i in enumerate(hookme.segments):
+                if i==my_seg:
+                    segment_index=j
+                    break
+            dprint("Segment index = {}".format(segment_index))
             their_fn = modifyme.section_from_virtual_address(their_funcsym.value)
             if their_funcsym.imported and their_funcsym.is_function:
                dprint("patching pltgot [function in added segment]")
@@ -853,7 +873,8 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
                                                 hookme,
                                                 patchfn,
                                                 binfn,
-                                                segment)
+                                                segment,
+                                                segment_index)
             elif their_funcsym.is_function and not their_funcsym.imported:
                dprint("injecting jump to [function in added segment]")
                success,modifyme,segment = patch_func_with_jump_to_added_segment(modifyme,
@@ -862,7 +883,8 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
                                                 binfn,binfn_offset,
                                                 segment,
                                                 external_funcs,
-                                                reg)
+                                                reg,
+                                                segment_index)
             else:
                print("ERROR: {} is not a function in {}".format(patchfn,inputbin))
                print("\nExiting.\n")
