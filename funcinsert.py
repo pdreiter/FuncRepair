@@ -380,9 +380,11 @@ def patch_pltgot_with_added_segment(binary_to_update:lief.Binary,patch_binary:li
     if their_fn.imported and their_fn.is_function:
         if not segment:
             dprint("Adding Segment: {}".format(patch_binary.segments[sgmnt_index]))
+            dprint("debug")
             segment = binary_to_update.add(patch_binary.segments[sgmnt_index])
         else:
             dprint("Segment already exists: {}".format(segment))
+        dprint("Segment done")
         my_fn = patch_binary.get_symbol(patch_fn_name)
         my_fn_addr = segment.virtual_address + my_fn.value
         binary_to_update.patch_pltgot(bin_fn_name,my_fn_addr)
@@ -422,7 +424,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             patch_segments = patch_binary.segments[segment_index]
             orig_rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
             segment = binary_to_update.add(patch_segments)
-            binary_to_update.write("added_seg.bin")
+            #binary_to_update.write("added_seg.bin")
+            dprint("Segment added")
             sym=None
             fixme=False
             if binary_to_update.name == "AIS-Lite":

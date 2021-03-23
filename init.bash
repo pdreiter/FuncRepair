@@ -3,6 +3,7 @@
 #-----------------------------------------------------
 # tihs script should be source'd to allow ENV variables
 # to be exported to encompassing environment
+# tested with Python3 versions : 3.6.5, 3.7.3
 #-----------------------------------------------------
 export PRD_BASE_DIR=$(realpath .)
 git submodule update --init 
@@ -18,8 +19,8 @@ fi
 
 
 # virtual environment
-if which python3.6; then
-   echo "python3.6 is installed"
+if which python3; then
+   echo "python3 is installed"
    echo "python3 is predominantly used for the PRD infrastructure"
    echo " - requirements for python3 will be set up in the virtual env"
    echo "BUT CGC testing mechanism uses an outdated Crypto package"
@@ -37,9 +38,9 @@ if which python3.6; then
 
    
 else
-   echo "This infrastructure tested with 'python3.6' installed"
-   echo "Please install 'python3.6'"
-   echo "Ubuntu install example: sudo apt-get install python3.6"
+   echo "This infrastructure tested with 'python3' installed"
+   echo "Please install 'python3'"
+   echo "Ubuntu install example: sudo apt-get install python3"
    return 1
 fi
 
@@ -50,11 +51,12 @@ if [[ ! -z "$VIRTUAL_ENV" && $VIRTUAL_ENV != "$PWD/prd-env" ]]; then
       return 1
 fi
 if [ -z $VIRTUAL_ENV ]; then 
-   if python3.6 -m venv prd-env; then
+   if python3 -m venv prd-env; then
       echo "python3 virtual environment is installed"
       source prd-env/bin/activate
       echo "Virtual environment @ $VIRTUAL_ENV is activated."
       echo "Installing requirements" 
+	  pip install wheel
       pip install -r requirements.txt
       #pip install -c constraints.txt
    else
