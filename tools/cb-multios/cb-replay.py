@@ -54,6 +54,36 @@ if generate_replay_log:
     o=open("replay.out.log","wb")
     o.close()
 
+test={'enabled':False,'id':None,'expected':bytes(),'write':bytes(),'seed':None}
+
+def enable_json_dump():
+    test['enabled']=True
+
+def json_append_expected_data(bdata):
+    if test['enabled']:
+        test['expected']+=bdata
+
+def json_append_write_data(bdata):
+    if test['enabled']:
+        test['write']+=bdata
+
+def json_seed(seed):
+    if test['enabled']:
+        test['seed']=seed
+
+def json_id(idn):
+    if test['enabled']:
+        test['id']=idn
+
+def write_json():
+    if test['enabled']:
+        dest=f"pkl/{test['id']}.pkl"
+        os.mkdir(os.basename(dest))
+        with open(f,'wb') as f:
+            import pickle
+            pickle.dump(test,f)
+            f.close()
+
 class RegexMatch(object):
     """ Simple wrapper for handling regexes in Throw.
 
@@ -621,6 +651,7 @@ class Throw(object):
         #return seed.encode('hex')
         seed_val=hex(seed)[2:].zfill(96)
         self.log("using seed: %s" % seed_val)
+        json_seed(seed_val)
         return seed_val
 
     def kill_procs(self):
@@ -1158,6 +1189,7 @@ class POV(object):
                                     item.name)
 
             read_args['match'] = {'invert': invert, 'values': values}
+            json_append_expected_data(values)
             if generate_replay_log:
                 try:
                     o=open("replay.out.log","ab")
@@ -1253,6 +1285,7 @@ class POV(object):
 
         echo = POV.get_attribute(data, 'echo', 'no', ['yes', 'no', 'ascii'])
         self.add_step('write', {'value': values, 'echo': echo})
+        json_append_write_data(values)
         if generate_replay_log:
             try:
                 o=open("replay.log","ab")
@@ -1466,6 +1499,7 @@ def main():
     parser.add_argument('--failure_ok', required=False, action='store_true',
                         default=False,
                         help='Failures for this test are accepted')
+    parser.add_argument('--id',dest='id',required=False, type=str, help="id for pickle content to store test info")
     parser.add_argument('--debug', required=False, action='store_true',
                         default=False, help='Enable debugging output')
     parser.add_argument('--perf', required=False, action='store_true',
@@ -1477,10 +1511,14 @@ def main():
 
     parser.add_argument('--dbi', required=False, type=str, default=None, 
     help='Specify any dynamic binary instrumentation (like valgrind) to be prepended to executable under test\
-	e.g. --dbi "/usr/bin/valgrind --tool=callgrind --log-file=tramp.cg.log --callgrind-out-file=tramp.cg.out"')
+    e.g. --dbi "/usr/bin/valgrind --tool=callgrind --log-file=tramp.cg.log --callgrind-out-file=tramp.cg.out"')
 
 
     args = parser.parse_args()
+    if args.debug:
+        print(f"Running {args.cbs} in debug mode")
+    if args.id:
+        enable_json_dump()
 
     assert args.concurrent > 0, "Conccurent count must be less than 1"
 
@@ -1540,6 +1578,9 @@ def main():
     print("# total tests failed: %d" % result_handler.failed)
     print("# polls passed: %d" % result_handler.full_passed)
     print("# polls failed: %d" % result_handler.errors)
+
+    json_id(args.id)
+    write_json()
 
     if args.failure_ok:
         return 0
