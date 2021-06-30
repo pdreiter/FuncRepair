@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.7
 """
 program: {0}
 purpose: extract set of functions from binary and patch with external input file
@@ -78,7 +78,11 @@ def parse_arguments():
                         default=default_src,
                         help='Directory where Function Source exists (default is `pwd`)')
 
-    parser.add_argument('--external-funcs',dest='externFns',nargs='+',
+    parser.add_argument('--detour-prefix',dest='detour_prefix',default=None,
+                        help="This refers to a uniform set of symbols that all detour functions use")
+    parser.add_argument('--uniform-detour',dest='uniform_det',default=None,
+                        help="This refers to a uniform set of symbols that all detour functions use")
+    parser.add_argument('--external-funcs',dest='externFns',action="append",
                         default=None,
                         help='format => patchFunction:<comma-separated list of external funcs> Modify function JUMP with Comma separated list of external functions whose addresses will be pushed onto the stack consistent with the call order as if the function was defined with void pointers of this same order [THIS MEANS THAT THIS ORDER MATTERS!]')
 
@@ -91,7 +95,6 @@ def parse_arguments():
     #global just_seg
     debug = args.debug
     #just_seg = args.just_seg
-    print(args.funcs)
     return args
 
 def compile_so(compiler,patchfile,hook_filename,hook_cflags,enable_diet):
@@ -290,17 +293,45 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        # pop off return address from stack
        # pop ecx => 59 => changing to edx because of a conflict with injecting into main
        # pop edx => 5a
+       pop_ecx=bytearray.fromhex("59")
+       pop_edx=bytearray.fromhex("5a")
+       mov_ecx_into_eax=bytearray.fromhex("89c8")
+       mov_edx_into_eax=bytearray.fromhex("89d0")
        if reg == "ecx":
-           hex_string+=bytearray.fromhex("59")
+           pop=pop_ecx
+           altpop=pop_edx
+           altmov=mov_edx_into_eax
        else:
-           hex_string+=bytearray.fromhex("5a")
-       cur_offset=len(hex_string)+offset
+           pop=pop_edx
+           altpop=pop_ecx
+           altmov=mov_ecx_into_eax
+       # preface 
+       hex_string+=pop # pop into save register
+       hexaddr_string = bytearray.fromhex("e8") # get current address value
+       hex_addr = int(0).to_bytes(4,byteorder='little')
+       hexaddr_string.extend(hex_addr)
+       hex_string.extend(hexaddr_string)
+       current_offset=len(hex_string) # save the offset of that corresponds to value in alternate register
+       hex_string.extend(altpop) # pop into alternate register (edx or ecx)
+
+       #def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=True):
+       #rel_offset = voidptr_address-(cur_eip_offset+current_offset)
        for i in rev_funclist:
            address=func_dict[i]
            print("[{:s}] 0x{:x} + 0x{:x} = 0x{:x}".format(i,func_to_update.value,cur_offset,
            func_to_update.value+cur_offset))
-           hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
-           cur_offset=len(hex_string)+offset
+           ptr_address=address-(func_to_update.value+current_offset)
+           # move value from alternate register into eax
+           hex_string.extend(altmov)
+           # add eax => 05 <address>
+           hex_string.extend(bytes.fromhex("05"))
+           hex_addr = (ptr_address.to_bytes(4,byteorder='little',signed=True))
+           hex_string.extend(hex_addr)
+           # push eax => 50
+           hex_string.extend(bytes.fromhex("50"))
+
+           #hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
+           #cur_offset=len(hex_string)+offset
 
        # push ecx => 51 => changing to edx because of a conflict with injecting into main
        # push edx => 52
@@ -424,19 +455,20 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             patch_segments = patch_binary.segments[segment_index]
             orig_rodata_VA=binary_to_update.concrete.get_section(".rodata").virtual_address
             segment = binary_to_update.add(patch_segments)
-            #binary_to_update.write("added_seg.bin")
+            binary_to_update.write("added_seg.bin")
             dprint("Segment added")
             sym=None
             fixme=False
-            if binary_to_update.name == "AIS-Lite":
-                sym=binary_to_update.get_symbol("EPFD")
-                fixme=True
-            if binary_to_update.name == "ASCII_Content_Server":
-                sym=binary_to_update.get_symbol("InitialInfo")
-                fixme=True
-            if binary_to_update.name == "HackMan":
-                sym=binary_to_update.get_symbol("words")
-                fixme=True
+            if "0.10." in lief.__version__:
+                if binary_to_update.name == "AIS-Lite":
+                    sym=binary_to_update.get_symbol("EPFD")
+                    fixme=True
+                if binary_to_update.name == "ASCII_Content_Server":
+                    sym=binary_to_update.get_symbol("InitialInfo")
+                    fixme=True
+                if binary_to_update.name == "HackMan":
+                    sym=binary_to_update.get_symbol("words")
+                    fixme=True
             if fixme:
                 esize= 8 if binary_to_update.header.identity_class == lief.ELF.ELF_CLASS.CLASS64 else 4
                 section=binary_to_update.sections[sym.shndx]
@@ -476,7 +508,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                            print("|WARNING!!! symbol '{}' is IMPORTED!".format(i))
                            print("| Please make sure '{}' is a ** type in '{}'".format(
                            i,patch_binary.name))
-                           xrelo=binary_to_update.get_relocation(i)
+                                
+                           xrelo=binary_to_update.concrete.get_relocation(i)
                            address=xrelo.address
                            # because the GOT ADDRESS requires the original .got table offset 
                            # to be in %ebx and the patch_binary has its own .got table locally,
@@ -485,8 +518,17 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                            #plt_address=binary_to_update.get_content_from_virtual_address(got_address,4)
                            ## subtract 6 from .got address, since it contains the next address after the PLT JMP
                            #address=int.from_bytes(plt_address,byteorder='little')-6
-                       except:
+                       except Exception as e:
                            print("ERROR! symbol '{}' cannot be resolved!".format(i))
+                           #print(j)
+                           #print("binding : {}".format(j.binding))
+                           #print("exported : {}".format(j.exported))
+                           #print("information : {}".format(j.information))
+                           #print("type : {}".format(j.type))
+                           #print("value : {}".format(j.value))
+                           #print(binary_to_update.sections[j.shndx].name_idx)
+                           #print(binary_to_update.sections[j.shndx].type)
+                           print(e)
                            import sys;sys.exit(1)
                        finally:
                            mydecl+=" void** my{},".format(i)
@@ -825,12 +867,13 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
            binfn=fn_in[fn_index+1:]
         if '+' in binfn:
            offset_index = binfn.find('+')
-           binfn_offset=int(binfn[offset_index+1])
+           binfn_offset=int(binfn[offset_index+1:])
            binfn=binfn[:offset_index]
            print("Offset into {} is {} bytes".format(binfn,binfn_offset))
 
         
         external_funcs = None if ((not extFns) or (patchfn not in extFns)) else extFns[patchfn]
+        dprint("inject_hook : external_funcs for {} => {}".format(patchfn,external_funcs))
         my_fn=None
         their_fn=None
         try:
@@ -880,13 +923,16 @@ def inject_hook(inputbin:str,outputbin:str,hook_file:str,
                                                 segment_index)
             elif their_funcsym.is_function and not their_funcsym.imported:
                dprint("injecting jump to [function in added segment]")
+               lreg=reg
+               if binfn=="main":
+                   lreg="edx"
                success,modifyme,segment = patch_func_with_jump_to_added_segment(modifyme,
                                                 hookme,
                                                 patchfn,
                                                 binfn,binfn_offset,
                                                 segment,
                                                 external_funcs,
-                                                reg,
+                                                lreg,
                                                 segment_index)
             else:
                print("ERROR: {} is not a function in {}".format(patchfn,inputbin))
@@ -912,6 +958,19 @@ def main(args):
     enable_diet = args.dietlibc
     genprog = args.genprog
     reg = args.register
+    if args.detour_prefix:
+        new_funcs=list()
+        for f in args.funcs:
+            if ":" in f:
+                x=f.split(":",1)
+                x[0]=args.detour_prefix+x[0]
+                new_funcs.append(":".join(x))
+            else:
+                new_funcs.append(args.detour_prefix+f+":"+f)
+
+        print("Old functions: "+str(args.funcs))
+        fn_list=new_funcs
+    print("Detour functions: "+str(fn_list))
     if not args.nodate or genprog:
         hook_filename = "libhook."+dateinfo+".so"
     pfile=fn_fname
@@ -921,11 +980,32 @@ def main(args):
         import re
         p=re.compile("^(\w+):(.*)$")
         for i in args.externFns:
+            dprint(i)
+            dprint("externFns: ["+i+"]")
             m=p.search(i)
-            fn=m.group(1)
-            ptrs=m.group(2).split(',')
-            external_funcs[fn]=ptrs
-            dprint("{} => {}".format(fn,ptrs))
+            if m:
+                fn=m.group(1)
+                refs=m.group(2)
+                dprint("detour function: ["+fn+"]")
+                dprint("detour symbol references: ["+refs+"]")
+                if len(refs)>0:
+                    ptrs=refs.split(',')
+                    external_funcs[fn]=ptrs
+                    dprint("FUNC {} => PTRS {}".format(fn,ptrs))
+    elif args.uniform_det:
+        external_funcs = dict()
+        for fn in fn_list:
+            local_fn=fn
+            if ":" in fn:
+               #local_fn=(fn.split(":",1)[1]).split("+",1)[0]
+               local_fn=fn.split(":",1)[0]
+            try:
+                if not external_funcs.get(local_fn,None):
+                    external_funcs[local_fn]=args.uniform_det.split(',')
+                    dprint("external_func[{}]={}".format(local_fn,args.uniform_det))
+            except Exception as e:
+                print(e)
+                dprint(args.uniform_det)
     if not os.path.exists(os.path.realpath("{}".format(fn_fname))):
         if not os.path.isfile(os.path.realpath("{}/{}".format(fn_src_dir,fn_fname))):
             import subprocess,shlex

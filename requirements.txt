@@ -1,4 +1,4 @@
-lief==0.10.1
+lief==0.11.5
 pandoc==1.0.2
 pkg-resources==0.0.0
 ply==3.11
