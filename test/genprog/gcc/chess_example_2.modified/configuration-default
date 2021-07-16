@@ -1,8 +1,0 @@
---seed 0
---program example_2.i
---pos-tests 7
---neg-tests 2
---search ga
---popsize 500
---generations 200
---compiler clang-7

@@ -217,10 +217,12 @@ def change_function_content(binary_to_update:lief.Binary,
     their_fn = binary_to_update.section_from_virtual_address(their_funcsym.value)
     address=their_funcsym.value+offset
     if their_funcsym.size < len(my_code):
-        dprint("WARNING: Code being injected is larger than original code")
+        print("ERROR: inserted code (size={l}bytes) will overrun {func_name} (size={their_funcsym.size}bytes)")
+        dprint("ERROR: inserted code (size={l}bytes) will overrun {func_name} (size={their_funcsym.size}bytes)")
         dprint("original size: {}".format(their_funcsym.size))
         dprint("patch size: {}".format(len(my_code)))
         dprint("Overrun size: {}".format(len(my_code)-their_funcsym.size))
+        return None,None
     return inject_code(binary_to_update,address,my_code)
 
 def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=True):
@@ -317,6 +319,7 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        #def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=True):
        #rel_offset = voidptr_address-(cur_eip_offset+current_offset)
        for i in rev_funclist:
+           # original was pretty expensive => 12 bytes / void* => reimplementing 7 bytes / void*
            address=func_dict[i]
            print("[{:s}] 0x{:x} + 0x{:x} = 0x{:x}".format(i,func_to_update.value,cur_offset,
            func_to_update.value+cur_offset))
@@ -604,7 +607,8 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                           my_fn_addr))
             except Exception as e:
                 print(e)
-                print("Virtual address being checked: {:08x} ]".format(my_fn_addr))
+                print("Virtual address being checked: [ {:08x} ]".format(my_fn_addr))
+                print(f"Function involved: [ {my_fnsym.name} ]")
                 success = False
                 raise e
                 
@@ -638,89 +642,6 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             dprint("Patch Binary's ELF class => {}".format(patch_binary.header.identity_class))
             default_entry_size= 8 if patch_binary.header.identity_class == lief.ELF.ELF_CLASS.CLASS64 else 4
             little_endian = True if patch_binary.abstract.header.endianness == lief.ENDIANNESS.LITTLE else False
-            #plt_section_offset=patch_binary.concrete.get_section(".plt").offset
-            #got_section_offset=patch_binary.concrete.get_section(".got").offset
-
-            # now let's update the old contents of the .got.plt and .got sections of the 
-            #  patch_binary to reflect the new segment offset
-            #myPLT = dict()
-            #for x in [ ".got.plt",".got" ]:
-            #    section = patch_binary.concrete.get_section(x)
-            #    contents = section.content
-            #    offset = section.offset
-            #    file_offset = section.file_offset
-            #    entry_size = section.entry_size if section.entry_size != 0 else default_entry_size
-            #    size = section.size
-            #    num_entries = int(size/entry_size)
-            #    content_offset = section.virtual_address-patch_segment_virtual_address
-            #    dprint("{} size '{}' ".format(x,size))
-            #    dprint("{} entry_size '{}' ".format(x,entry_size))
-            #    dprint("{} file_offset '{:08x}' ".format(x,file_offset))
-            #    dprint("{} offset '{:08x}' ".format(x,offset))
-            #    dprint("{} number of entries '{}' ".format(x,num_entries))
-            #    dprint("{} content:\n'{}'\n[ @ VA {:08x} => {:08x}]".format(
-            #                  x,
-            #                  bytearray(contents).hex(),
-            ##                  section.virtual_address,
-            #                  content_offset
-            #                  ))
-            #    dprint("segment content @ content_offset = 0x{:08x} :\n'{}'".format( content_offset,
-            #                  bytearray(segment.content[content_offset:content_offset+size]).hex()
-            #          ))
-            #    dprint("Segment file_offset = 0x{:016x}".format(content_offset))
-            #    #import sys; sys.exit(-1);
-            #    for i in range(num_entries):
-            #        # this is the .got or .got.plt entry whose content is an absolute address for that function
-            #        dest_addr_offset = content_offset+(i*entry_size)
-            #        absolute_dest_addr_offset = section.virtual_address + (i*entry_size)
-            #        myPLT[absolute_dest_addr_offset] = dict()
-            #        entry_value = contents[i*entry_size:(i+1)*entry_size]
-            #        dprint("{} entry #{} => '{}' ".format(x,i,entry_value))
-            #        addr_entry_value = int.from_bytes(bytes(entry_value),byteorder='little' if little_endian else 'big')
-            #        dprint("{} addr_entry_value of entry #{} => '0x{:016x}' ".format(x,i,addr_entry_value))
-            #        # the original table entry value
-            #        myPLT[absolute_dest_addr_offset]["orig"]=addr_entry_value
-            #        # need to calculate the segment_offset
-            #        myPLT[absolute_dest_addr_offset]["segment_offset"]=None
-            #        # updated address => address_value = addr_entry_value+segment_offset_delta
-            #        if addr_entry_value > patch_segment_virtual_address:
-            #            new_addr_value = addr_entry_value+segment_offset_delta
-            #            myPLT[absolute_dest_addr_offset]["segment_offset"]=addr_entry_value-patch_segment_virtual_address
-            #        else:
-            #            new_addr_value = addr_entry_value
-            #        entry_segment_offset = new_addr_value.to_bytes(entry_size,byteorder='little' if little_endian else 'big')
-            #        #this doesn't seem to work the way I expected, instead let's edit the segment's content
-            #        #dest_addr_offset = segment.virtual_address + offset+(i*entry_size)
-            #        #TODO inject_code(binary_to_update:lief.Binary,address:int,new_code:bytearray):
-            #        #dest_addr_offset = content_offset+(i*entry_size)
-            #        #segment.content[dest_addr_offset:dest_addr_offset+entry_size] = entry_segment_offset
-
-            #        dprint("Changing {} to {} ".format(segment.content[dest_addr_offset:dest_addr_offset+entry_size],entry_segment_offset))
-            #        inject_code(binary_to_update,segment.virtual_address+dest_addr_offset,bytearray(entry_segment_offset))
-            #        dprint("Updated contents => {} ".format(segment.content[dest_addr_offset:dest_addr_offset+entry_size]))
-            #        dprint("{} new_addr_value of entry #{} => '0x{:016x}' @ address {:08x} ".format(x,i,new_addr_value,dest_addr_offset))
-            #    dprint("{} @ 0x{:016x} => segment.virtual_address : '0x{:016x}' + offset :'0x{:016x}' ".format(
-            #    x,segment.virtual_address+content_offset,segment.virtual_address,content_offset))
-            #    #import sys; sys.exit(-1);
-            ##dprint("Segment offset delta : {}".format(segment_offset_delta))
-            #section = patch_binary.concrete.get_section(".plt")
-            #contents = section.content
-            #offset = section.offset
-            #file_offset = section.file_offset
-            #entry_size = section.entry_size if section.entry_size != 0 else default_entry_size
-            #size = section.size
-            #num_entries = int(size/entry_size)
-            #content_offset = section.virtual_address-patch_segment_virtual_address
-
-            #----- start of processing the .rela.plt
-            # sooooooooo how's this going to work:
-            # For each i in .rela.plt:
-            #     1) my_gotplt_address = i.address
-            #     2) my_func_address = i.addend
-            #     3) translt_gotplt_offset=my_gotplt_address-patch_segment_virtual_address
-            #     4) translt_func_address=my_func_address-patch_segment_virtual_address + segment.virtual_address
-            #     5) segment.content[translt_gotplt_offset:+entry_size]= translt_func_address 
-            #               => translt_func_address.to_bytes(entry_size,byteorder='little' if little_endian else 'big')
             myPLT = list()
             for i,rel in enumerate(patch_binary.relocations):
                 if not rel.is_rela:
