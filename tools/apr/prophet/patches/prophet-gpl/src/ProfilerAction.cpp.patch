@@ -1,0 +1,11 @@
+--- prophet-gpl/src/ProfilerAction.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/ProfilerAction.cpp	2021-02-09 10:00:56.056959602 -0700
+@@ -184,7 +184,7 @@
+             indexfile = args[1];
+         else
+             indexfile = "__location.idx";
+-        //llvm::errs() << "Come here: " << args[0] << " " << args[1] << "\n";
++        llvm::errs() << "Come here: " << args[0] << " " << args[1] << "\n";
+         return true;
+     }
+ 

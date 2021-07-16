@@ -1,0 +1,156 @@
+--- prophet-gpl/src/BenchProgram.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/BenchProgram.cpp	2021-02-09 10:00:55.292952367 -0700
+@@ -24,6 +24,7 @@
+ #include <assert.h>
+ #include <unistd.h>
+ #include <sstream>
++#include <iostream>
+ #include <fstream>
+ #include <llvm/Support/raw_ostream.h>
+ 
+@@ -53,6 +54,7 @@
+         }
+     }
+     while (ret != 0);
++    fprintf(stderr, "cmd='%s'\n", cmd.c_str());
+ }
+ 
+ BenchProgram::BenchProgram(const std::string &configFileName, const std::string &workDirPath,
+@@ -218,6 +220,13 @@
+         }
+     }
+ 
++    challenge = config.getStr("challenge");
++    makefile = config.getStr("makefile");
++    makefile_target = config.getStr("makefile_target");
++    if (makefile != "")
++        makefile = " -f "+makefile;
++    if (makefile_target != "")
++        makefile = makefile+" "+makefile_target;
+     dep_dir = config.getStr("dep_dir");
+     if (dep_dir != "")
+         dep_dir = getFullPath(dep_dir);
+@@ -230,6 +239,10 @@
+     assert( ret == 0);
+     this->build_cmd = getFullPath(config.getStr("build_cmd"));
+     this->test_cmd = getFullPath(config.getStr("test_cmd"));
++    if (challenge != "") {
++        this->build_cmd += " -e "+challenge;
++        this->test_cmd  += " -e "+challenge;
++    }
+     this->localization_filename = work_dir + "/" + LOCALIZATION_RESULT;
+ 
+     // The files for controling timeout stuff
+@@ -281,6 +294,10 @@
+     else
+         cmd = build_cmd + " -c -d " + src_file + " " + src_dir + " __args >>" + build_log_file + " 2>&1";
+     int sys_ret = explain_system_on_error(cmd.c_str());
++    if (sys_ret != 0)
++        fprintf(stderr, "Command '%s' failed!\n", cmd.c_str());
++    else
++        fprintf(stderr, "Command '%s' passed!\n", cmd.c_str());
+     assert( sys_ret == 0 );
+     parseArgFile("__args", build_dir, build_args);
+     sys_ret = explain_system_on_error("rm -rf __args");
+@@ -292,7 +309,7 @@
+         fprintf(stderr, "\"%s\"\n", build_args[i].c_str());*/
+ }
+ 
+-bool incrementalBuild(time_t timeout_limit, const std::string &src_dir, const std::string &build_log) {
++bool incrementalBuild(time_t timeout_limit, const std::string &src_dir, const std::string &build_log, const std::string makefile) {
+     char ori_dir[1000];
+     char* retc = getcwd(ori_dir, 1000);
+     assert(retc != NULL);
+@@ -301,10 +318,12 @@
+     //FIXME: ugly for php
+     ret = system("rm -rf ext/phar/phar.php");
+     assert(ret == 0);
++    std::string make_cmd="make"+makefile;
++    
+     if (timeout_limit == 0)
+-        ret = execute_with_timeout((std::string("make >>") + build_log + " 2>&1"), 60);
++        ret = execute_with_timeout((std::string(make_cmd+" >>") + build_log + " 2>&1"), 60);
+     else
+-        ret = execute_with_timeout((std::string("make >>") + build_log + " 2>&1"), timeout_limit);
++        ret = execute_with_timeout((std::string(make_cmd+" >>") + build_log + " 2>&1"), timeout_limit);
+ 
+     bool succ = (ret == 0);
+     ret = chdir(ori_dir);
+@@ -322,6 +341,7 @@
+         else
+             cmd = build_cmd + " " + src_dir + " >>" + build_log_file + " 2>&1";
+         int ret;
++        std::cerr << "buildFull [subdir : "<<subDir.c_str()<<"] [cmd : "<<cmd.c_str()<< ")]\n"<<std::endl;
+         if (timeout_limit == 0)
+             ret = system(cmd.c_str());
+         else
+@@ -330,7 +350,7 @@
+         return ret == 0;
+     }
+     else {
+-        return incrementalBuild(timeout_limit, src_dir, build_log_file);
++        return incrementalBuild(timeout_limit, src_dir, build_log_file,makefile);
+     }
+ }
+ 
+@@ -345,8 +365,10 @@
+     // gcc/cc compiler
+     ori_path_for_wrap_path = getenv("PATH");
+     std::string new_path = CLANG_WRAP_PATH;
++    std::cerr<< "pushWrapPath : "<<new_path.c_str()<<std::endl;
+     new_path += ":" + ori_path_for_wrap_path;
+     int ret = setenv("PATH", new_path.c_str(), 1);
++    //pemma
+     assert( ret == 0 );
+ 
+     // Copy it to the wrap path
+@@ -416,6 +438,7 @@
+     {
+         //llvm::errs() << "Build repaired code with timeout limit " << timeout_limit << "\n";
+         ExecutionTimer timer;
++        std::cerr << "buildSubDir : "<<subDir.c_str()<<std::endl;
+         succ = buildFull(subDir, timeout_limit);
+         if (succ) {
+             total_repair_build_time += timer.getSeconds();
+@@ -535,10 +558,14 @@
+         assert( res == 0);
+     }*/
+ 
++    std::cerr << "testSet [cmd : "<<cmd.c_str()<<"]"<<std::endl;
+     // case_timeout controls the timeout of each executed test case
+-    if (case_set.size() != 1)
++    if (case_set.size() != 1){
++        std::cerr << "Using 'system'" <<std::endl;
+         res = system(cmd.c_str());
++    }
+     else {
++        std::cerr << "Using 'execute_with_timeout'"<<std::endl;
+         res = execute_with_timeout(cmd.c_str(), case_timeout);
+     }
+ 
+@@ -642,7 +669,7 @@
+ /*bool BenchProgram::testProfile(size_t id,
+         std::map<SourcePositionTy, ProfileInfoTy> &M) {
+     assert(profile_dir != "");
+-    std::string cmd = "rm -rf /tmp/__run*.log";
++    std::string cmd = "rm -rf /tmp_proj/prophet/__run*.log";
+     int res = system(cmd.c_str());
+     assert(res == 0);
+ 
+@@ -674,14 +701,14 @@
+         LI = new LocationIndex(INDEX_FILE);
+ 
+     M.clear();
+-    DIR* dp = opendir("/tmp");
++    DIR* dp = opendir("/tmp_proj/prophet");
+     struct dirent *dirp;
+     while (((dirp = readdir(dp)))) {
+         std::string nstr = dirp->d_name;
+         if ((nstr.substr(0,5) != "__run") || (nstr.substr(nstr.size() - 4, 4) != ".log"))
+             continue;
+ 
+-        std::ifstream fin(("/tmp/" + nstr).c_str(), std::ifstream::in);
++        std::ifstream fin(("/tmp_proj/prophet/" + nstr).c_str(), std::ifstream::in);
+         std::string line1, line2;
+         while (std::getline(fin, line1)) {
+             if (line1 == "") break;

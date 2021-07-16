@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+clang $@
+#if [[ "$*" == *"-m32"* ]]; then 
+#/home/bss-lab-1/Prophet/llvm-3.6.2/tools/32/bin/clang++ $@
+#else
+#/home/bss-lab-1/Prophet/llvm-3.6.2/tools/bin/clang++ $@
+#fi

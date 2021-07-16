@@ -54,18 +54,33 @@ if generate_replay_log:
     o=open("replay.out.log","wb")
     o.close()
 
-test={'enabled':False,'id':None,'expected':bytes(),'write':bytes(),'seed':None}
+test={'enabled':False,'id':None,'expected':bytearray(),'write':bytearray(),'seed':None}
 
 def enable_json_dump():
     test['enabled']=True
 
-def json_append_expected_data(bdata):
-    if test['enabled']:
-        test['expected']+=bdata
+#def json_append_expected_data(bdata):
+#    if test['enabled']:
+#        for i in bdata:
+#            try:
+#                test['expected'].extend(i)
+#            except Exception as e:
+#                print(f"type = {type(i)}",flush=True)
+#                print(e)
+#                raise(e)
 
 def json_append_write_data(bdata):
     if test['enabled']:
-        test['write']+=bdata
+        for i in bdata:
+            try:
+                if type(i)==bytes:
+                    test['write'].extend(i)
+                if type(i)==str:
+                    test['write'].extend(bytes(i,encoding="raw_unicode_escape"))
+            except Exception as e:
+                print(f"type = {type(i)}",flush=True)
+                print(e)
+                raise(e)
 
 def json_seed(seed):
     if test['enabled']:
@@ -77,9 +92,12 @@ def json_id(idn):
 
 def write_json():
     if test['enabled']:
-        dest=f"pkl/{test['id']}.pkl"
-        os.mkdir(os.basename(dest))
-        with open(f,'wb') as f:
+        dest=f"{test['id']}.pkl"
+        if os.path.exists(dest):
+            os.remove(dest)
+        if not os.path.exists(os.path.dirname(dest)):
+            os.makedirs(os.path.dirname(dest))
+        with open(dest,'wb') as f:
             import pickle
             pickle.dump(test,f)
             f.close()
@@ -1189,7 +1207,7 @@ class POV(object):
                                     item.name)
 
             read_args['match'] = {'invert': invert, 'values': values}
-            json_append_expected_data(values)
+            #json_append_expected_data(values)
             if generate_replay_log:
                 try:
                     o=open("replay.out.log","ab")

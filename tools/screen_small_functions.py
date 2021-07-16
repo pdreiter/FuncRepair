@@ -57,7 +57,10 @@ class elf_file:
                 import sys
                 print("- {}".format(f),file=sys.stderr)
                 objdump=self.obtain_fn_objdump(f)
-                if len(objdump)<1:
+                if not objdump:
+                    self.failed_syms.append(f)
+                    continue
+                elif len(objdump)<1:
                     import sys
                     print("ERROR: Can't find objdump for {}".format(f),file=sys.stderr)
                     self.failed_syms.append(f)
@@ -210,13 +213,18 @@ class elf_file:
                     func_objdump_list.append(line);
         return func_objdump_list               
 
-    def obtain_fn_objdump(self,fn):
+    def obtain_fn_objdump(self,fn_):
+        fn=f"'{fn_.rstrip().lstrip()}'"
+
+        #if "::" in fn:
+        #    print(f"[WARNING] currently not supporting C++ functions like '{fn}'")
+        #    return None
         if self.binutils_version<2.32:
             if not self.bin_objdump:
                 self.bin_objdump = self.obtain_objdump()
             return self.get_func_disasm(self.bin_objdump,fn)
         else:
-            disasm_fn="--disassemble={}".format(fn.rstrip().lstrip())
+            disasm_fn=f"--disassemble={fn}"
             objdump_cmd=["/usr/bin/objdump","-D","-C", disasm_fn,self.bin]
             egrep_cmd=["egrep","-v","'(Disassembly|file format|^$)'"]
             cmd=objdump_cmd+["|"]+egrep_cmd

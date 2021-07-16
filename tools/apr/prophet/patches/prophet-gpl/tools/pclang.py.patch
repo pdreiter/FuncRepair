@@ -1,0 +1,180 @@
+--- prophet-gpl/tools/pclang.py	2016-11-30 16:19:11.000000000 -0700
++++ prophet-gpl-64/tools/pclang.py	2021-02-09 11:13:43.470992065 -0700
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2
+ # Copyright (C) 2016 Fan Long, Martin Rianrd and MIT CSAIL 
+ # Prophet
+ # 
+@@ -16,12 +16,13 @@
+ # 
+ # You should have received a copy of the GNU General Public License
+ # along with Prophet.  If not, see <http://www.gnu.org/licenses/>.
+-from sys import argv
++from sys import argv,stderr
+ from os import system, environ, path
+ import random
+ import subprocess
+ 
+ def preprocessGen(src_file, out_file, args, idx):
++    print >> stderr, "[pclang] preprocessGen "+src_file+" "+out_file+" "+" ".join(args)+" "+str(idx)
+     new_args = list(args);
+     new_args[idx] = src_file;
+     has_dash_c = False;
+@@ -33,7 +34,7 @@
+         if (new_args[i] == "-o"):
+             has_dash_o = True;
+             if (i == len(new_args) -1):
+-                print "argument error, -o without filename";
++                print >> stderr, "argument error, -o without filename";
+                 exit(1);
+             new_args[i+1] = out_file;
+     if (not has_dash_c):
+@@ -43,11 +44,12 @@
+         new_args.append(out_file);
+ 
+     cmd = clang_cmd + " " + " ".join(new_args[1:]);
+-    print "Invoking: " + cmd;
++    print >> stderr, "[pclang] Invoking: " + cmd;
+     ret = subprocess.call(cmd, shell=True);
+     return ret;
+ 
+ def rewriteSourceGen(src_file, out_file, args, idx):
++    print >> stderr, "[pclang] rewriteSourceGen "+src_file+" "+out_file+" "+" ".join(args)+" "+str(idx)
+     new_args = list(args);
+     new_args[idx] = src_file;
+     has_dash_c = False;
+@@ -59,7 +61,7 @@
+     cmd = clang_cmd + " -Xclang -load -Xclang " + profile_plugin_path + " -Xclang -plugin -Xclang err-profiler-gen " + \
+         "-Xclang -plugin-arg-err-profiler-gen -Xclang " + out_file + \
+         " -Xclang -plugin-arg-err-profiler-gen -Xclang " + index_file + " " + " ".join(new_args[1:]);
+-    print "Invoking: " + cmd;
++    print >> stderr, "[pclang] Invoking: " + cmd;
+     ret = subprocess.call(cmd, shell=True);
+     return ret;
+ 
+@@ -69,7 +71,7 @@
+     cmd = clang_cmd + " -Xclang -load -Xclang " + profile_plugin_path + " -Xclang -plugin -Xclang err-profiler-rewrite " + \
+         " -Xclang -plugin-arg-err-profiler-rewrite -Xclang " + text_file + \
+         " -Xclang -plugin-arg-err-profiler-rewrite -Xclang " + out_file + " " + " ".join(new_args[1:]);
+-    print "Invoking: " + cmd;
++    print >> stderr, "[pclang] Invoking: " + cmd;
+     ret = subprocess.call(cmd, shell=True);
+     return ret;
+ 
+@@ -94,23 +96,25 @@
+     f.close();
+ 
+ def finalCompile(src_file, args, idx):
++    print >> stderr, "[pclang] finalCompile "+src_file+" "+" ".join(args)+" "+str(idx)
+     new_args = list(args);
+     new_args[idx] = src_file;
+     cmd = clang_cmd + " " + runtime_include_arg + " " + " ".join(new_args[1:]);
++    print >> stderr, "[pclang.py] invoking: " + cmd;
+     ret = subprocess.call(cmd, shell = True);
+-    print "invoking: " + cmd;
+     return ret;
+ 
+ def cleanup_error(ret):
+     system("rm -rf " + tmpfile1);
+     system("rm -rf " + tmpfile2);
+     system("rm -rf " + tmpfile3);
++    print >> stderr, "[pclang] done!";
+     exit(ret);
+ 
+ def genTmpFilename():
+     cond = True;
+     while cond:
+-        ret = "/tmp/pclang_";
++        ret = "/tmp_proj/prophet/prd_pclang_";
+         for i in range(0, 8):
+             ret = ret + str(random.randint(0, 9));
+         if src_type != "cpp":
+@@ -144,33 +148,55 @@
+ 
+ #argv = new_argv;
+ 
++bit_arch=""
++bit32=False
++skip_wrap=False
+ for i in range(1, len(argv)):
++    if "-soname" in argv[i]:
++        skip_wrap=True
++    if "-m32" in argv[i]:
++        bit32=True
+     argv[i] = fix_argv(argv[i]);
+ 
+-clang_cmd = environ.get("COMPILE_CMD");
++clang_cmd = path.realpath(environ.get("COMPILE_CMD"));
++
++if bit32:
++    bit_arch="/32"
++    if 'tools/32' not in clang_cmd:
++        clang_cmd = clang_cmd.replace("tools/","tools/32/",1)
++
+ assert(clang_cmd != None);
+ index_file = environ.get("INDEX_FILE");
+ assert(index_file != None);
+ 
+-# print "Invoking pclang here!\n";
++print >> stderr, "Invoking pclang using "+clang_cmd+"\n";
++
++if skip_wrap:
++    cmd=clang_cmd+" "+' '.join(argv[1:])
++    print >> stderr, "Compiling a shared object library, so skipping\n"+cmd+"\n";
++    ret = subprocess.call(cmd, shell = True);
++    exit(ret);
++    
++    
+ 
+ fulldir = path.abspath(path.dirname(argv[0]));
+ 
+-profile_plugin_path = fulldir + "/../src/.libs/libprofiler.so.0";
++profile_plugin_path = fulldir + "/.."+bit_arch+"/src/.libs/libprofiler.so.0";
+ runtime_include_arg = "-I" + fulldir + "/../include";
+-runtime_library_path = fulldir + "/../src/.libs"
++runtime_library_path = fulldir + "/.."+bit_arch+"/src/.libs"
+ dashed = False;
+ src_file = "";
+ src_type = "c";
+ src_idx = -1;
+ 
+-print argv;
++print >> stderr, argv;
+ just_compile = False;
+ found_output = False;
+ for i in range(1, len(argv)):
+     if argv[i] == "-o":
+         found_output = True;
+     if argv[i] == "-c":
++        print >> stderr, "[pclang.py] just_compile : True ";
+         just_compile = True;
+     if argv[i][0] != "-":
+         arg = argv[i];
+@@ -182,19 +208,24 @@
+                 if (ext == "cpp"):
+                     src_type = "cpp";
+                 src_idx = i;
++    elif argv[i] == "-static-pie" or argv[i] == "-shared" or argv[i] == "--save-temps":
++        print >> stderr, "[pclang.py] regenerating source code doesn't support -static-pie or -shared, removing"
++        argv[i] = "";
+ 
+ # This is a link command, I am going to link the library
+ if not just_compile:
++    print >> stderr, "[pclang.py] Just a link command";
+     if (len(argv) > 1 and argv[1].find("-print-prog-name") != 0):
+         cmd = clang_cmd + " -Wl,-rpath=" + runtime_library_path + " -L " + runtime_library_path + " " + " ".join(argv[1:]) + " -lprofile_runtime";
+     else:
+         cmd = clang_cmd + " " + " ".join(argv[1:]);
+-    #print "Non-compile cmd: " + cmd;
++    #print >> stderr, "Non-compile cmd: " + cmd;
++    print >> stderr, "[pclang.py] link command : "+cmd;
+     ret = subprocess.call(cmd, shell=True);
+     exit(ret);
+ 
+ if (src_idx == -1):
+-    print "Cannot identify the c source, call original GCC"
++    print >> stderr, "Cannot identify the c source, call original GCC"
+     cmd = "/usr/bin/gcc " + " ".join(argv[1:]);
+     ret = subprocess.call(cmd, shell=True);
+     exit(ret);

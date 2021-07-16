@@ -9,19 +9,18 @@ export PRD_BASE_DIR=$(realpath .)
 export IDA_BASE_DIR=$(realpath ida)
 export R_LIBS=$(realpath .)/R_PACKAGES/pkgs
 export PROPHET64_BASE=$(realpath .)/PROPHET/prophet-gpl
-git submodule update --init 
+UPDATE=$1
 
-if [[ -d "genprog-code-func-repair" ]]; then 
-	pushd genprog-code-func-repair
-	git checkout function-based-repair
-	popd
+if [[ ! -z $UPDATE ]]; then 
+    git submodule update --init 
+    
+    if [[ -d "genprog-code-func-repair" ]]; then 
+    	pushd genprog-code-func-repair
+    	git checkout function-based-repair
+    	popd
+    fi
+    
 fi
-if [[ -d "cgc/cb-multios" ]]; then 
-  pushd cgc/cb-multios 
-  git checkout genprog_afr_prd
-  popd
-fi
-
 
 # virtual environment
 if which python3; then
@@ -87,12 +86,6 @@ if [[ ! -d "${libinstall_dir}/glibc-${glibc_ver}" ]]; then
     popd 
 fi 
 
-#if [[ ! -d "genprog-code-func-repair" ]]; then
-#    git clone https://github.com/pdreiter/genprog-code-prd.git genprog-code-func-repair
-#	pushd genprog-code-func-repair
-#	git pull https://github.com/pdreiter/genprog-code-prd.git function-based-repair
-#	popd
-#fi
 
 if [[ ! -d "${libinstall_dir}/dietlibc" ]]; then
    mkdir -p ${libinstall_dir}/dietlibc

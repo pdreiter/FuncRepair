@@ -9,7 +9,7 @@ class prd_cfg:
         self.prd_info=prd_info
         self.load_cb_info()
         self.gp_exe=gp_exe
-        self.funcinsert=f"{prd_dir}/funcinsert_opt.py"
+        self.funcinsert=f"{prd_dir}/funcinsert.py"
         self.prophet_base=prophet_info[0]
         self.prophet_exe=prophet_info[1]
         self.test_script=f"{self.srcdir}/test.sh"
@@ -82,10 +82,18 @@ class prd_cfg:
 
 
 
+    def preprocess_for_genprog(self,name,srcdir):
+        preprocess='perl -pi -e\'s/(enum|union) \$/$1 ${1}_/g\' '+f"{name}_recomp.c"
+        cwd=os.getcwd()
+        os.chdir(srcdir)
+        perl_result=subprocess.check_output(preprocess,shell=True).decode('ascii')
+        os.chdir(cwd)
+        return perl_result
+        
         
     def setup_genprog(self,name,srcdir,destdir,scriptdir):
         """ """
-        
+        src_success=self.preprocess_for_genprog(name,srcdir)
         povs=self.generate_pov_test_scripts(srcdir)
         cfgs=self.generate_genprog_cfgs(srcdir)
         
@@ -120,7 +128,7 @@ class prd_cfg:
         ext=[
         "--search brute |& tee logs/gp.brute_force.log", 
         "--search brute --subatom-mutp 1.0 --continue |& tee logs/gp.brute_force_subatom_all.log", 
-        "--crossover subset -delp 0.33333 --fitness-in-parallel 2 --neg-weight 1 --pos-weight 0.1 --repp 0 --sample 1 --search ww --swapp 0.33333 |& tee logs/gp.ae_tool.log",
+        "--crossover subset --delp 0.33333 --fitness-in-parallel 2 --neg-weight 1 --pos-weight 0.1 --repp 0 --sample 1 --search ww --swapp 0.33333 |& tee logs/gp.ae_tool.log",
         " |& tee logs/gp.ga.log"
         ]
         gp_cmds=[gp_+x for x in ext]
@@ -328,7 +336,7 @@ def parse_arguments():
     env=os.environ
     prd_base_dir=env.get('PRD_BASE_DIR',None)
     base_dir=env.get('CGC_CB_DIR',None)
-    prophet_prd_dir=f"{base_dir}/prophet" if base_dir else None
+    prophet_prd_dir=f"{prd_base_dir}/tools/apr/prophet" if prd_base_dir else None
     gpsrc_dir=env.get('PRD_GENPROGSRC_DIR',None)
     llvm_clang_gcc_dir=env.get('LLVM_CLANG_GCC',None)
     prophet_base=env.get('PROPHET64_BASE',None)

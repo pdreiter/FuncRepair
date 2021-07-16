@@ -1,0 +1,20 @@
+--- prophet-gpl/src/_prophet_profile.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/_prophet_profile.cpp	2021-02-09 10:00:55.300952442 -0700
+@@ -37,7 +37,7 @@
+     sigfillset(&full);
+     sigprocmask(SIG_BLOCK, &full, &oldset);
+     pthread_mutex_lock(&global_mutex);
+-    sprintf(buffer, "/tmp/__run%u.log", getpid());
++    sprintf(buffer, "/tmp_proj/prophet/__run%u.log", getpid());
+     FILE *f = fopen(buffer, "w");
+     assert( f != NULL);
+     /*size_t cnt = 0;
+@@ -54,7 +54,7 @@
+     pthread_mutex_unlock(&global_mutex);
+     sigprocmask(SIG_SETMASK, &oldset, &full);
+ /*    std::ostringstream sout;
+-    sout << "/tmp/__run" << getpid() << ".log";
++    sout << "/tmp_proj/prophet/__run" << getpid() << ".log";
+     std::string na = sout.str();
+     std::fstream fout(na.c_str(), std::fstream::out);
+     assert(fout.is_open());

@@ -1,0 +1,58 @@
+--- prophet-gpl/src/Utils.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/Utils.cpp	2021-02-09 10:00:55.812957291 -0700
+@@ -88,6 +88,10 @@
+     char tmps[1000];
+     build_args.clear();
+     int cnt = fscanf(in, "%s", tmps);
++    if (cnt <= 0) {
++        std::cerr << "parseArgFile( " << arg_file.c_str() << ","
++                  << tmps << "," << "build_args);" << std::endl;
++    }
+     assert( cnt > 0);
+     build_dir = tmps;
+     // We need to put extra include directory arguments in to avoid compile error
+@@ -156,6 +160,7 @@
+     return ret;
+ }
+ 
++
+ bool exist_directory(const std::string &dir) {
+     struct stat sb;
+     if ((stat(dir.c_str(), &sb) == 0) && S_ISDIR(sb.st_mode))
+@@ -173,16 +178,32 @@
+ }
+ 
+ std::string getFullPath(const std::string &path) {
+-    char tmp[PATH_MAX];
+-    char * ret = realpath(path.c_str(), tmp);
+-    assert( ret != 0);
+-    return std::string(tmp);
++   char tmp[PATH_MAX];
++   struct stat sb;
++   int x = lstat(path.c_str(),&sb);
++   if ((x==0) && (S_ISLNK(sb.st_mode))){
++       std::cerr << "path '"<<path.c_str()<<"' is a link" << std::endl;
++       ssize_t nB,bufsize;
++       bufsize=sb.st_size;
++       if (sb.st_size == 0){ 
++           bufsize=PATH_MAX;
++       }
++       nB = readlink(path.c_str(),tmp,bufsize);
++       assert(nB != -1);
++       if (nB == bufsize) { std::cerr << "Readlink buffer may have been truncated. value =" << tmp << std::endl; }
++   }
++   else {
++       char * ret = realpath(path.c_str(), tmp);
++       assert( (tmp != 0 || ret != 0) && std::cerr << std::endl << "getFullPath: " << path.c_str() << " [" << tmp << "]" << std::endl );
++   }
++   return std::string(tmp);
+ }
+ 
+ int execute_with_timeout(const std::string &cmd, unsigned long timeout) {
+     std::ostringstream sout;
+     sout << "timeout " << timeout <<  "s " << cmd;
+     std::string s = sout.str();
++    std::cerr << "Building command: " << s.c_str() << std::endl;
+     int ret = system(s.c_str());
+     return ret;
+ }

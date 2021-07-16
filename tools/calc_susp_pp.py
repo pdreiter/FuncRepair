@@ -553,6 +553,7 @@ if PRINT_ME:
     #print("type(s_tarantula[0]) :"+str(type(s_tarantula[0])))
     #print("s_tarantula[0] :"+str(s_tarantula[0]))
     #print("type(tarantula) :"+str(type(tarantula)))
+    names_=set()
     for i in range(0,upper):
         if i >= len(s_tarantula):
             break
@@ -563,11 +564,54 @@ if PRINT_ME:
         s_barinel[i]['name'],s_barinel[i]['value'],
         s_dstar[i]['name'],s_dstar[i]['value'],
         )
+        names_.add(s_tarantula[i]['name'])
         if bad_funcs:
             for fn in bad_funcs:
                 import re
                 s=re.sub(r"\|"+fn+" ",r"|"+fn+"* ",s)
         logprint(s)
+
+    rank_t=dict()
+    tie_t={'t':list(),'o':list(),'op':list(),'b':list(),'d':list()}
+    for i in range(0,upper):
+        j=0
+        for x,y in [(tie_t['t'],s_tarantula),\
+                  (tie_t['o'],s_ochiai),\
+                  (tie_t['op'],s_op2),\
+                  (tie_t['b'],s_barinel),\
+                  (tie_t['d'],s_dstar)\
+                  ]:
+            if len(x)==0 or x[-1]['value']>y[i]['value']:
+                x.append({'names':[y[i]['name']],'value':y[i]['value']})
+            else:
+                x[-1]['names'].append(y[i]['name'])
+            nm=rank_t.get(y[i]['name'],None)
+            if not nm:
+                rank_t[y[i]['name']]=[-1,-1,-1,-1,-1]
+            rank_t[y[i]['name']][j]=len(x)
+            if i>=upper-1:
+                nm=rank_t.get('TOTAL_BUCKETS',None)
+                if not nm:
+                    rank_t['TOTAL_BUCKETS']=[-1,-1,-1,-1,-1]
+                rank_t['TOTAL_BUCKETS'][j]=len(x)
+            j+=1
+
+    all_=rank_t['TOTAL_BUCKETS']
+    logprint("\nRanking per function with collection of ties")
+    logprint(" function rank with ties (ties in this rank) / total functions")
+    logprint("\n{:35s}|{:13s}|{:13s}|{:13s}|{:13s}|{:13s}|".format("Function","tarantula","ochiai","op2","barinel","dstar"))
+    ties=[tie_t['t'],tie_t['o'],tie_t['op'],tie_t['b'],tie_t['d']]
+    for i in list(names_):
+        j=rank_t[i]
+        c=list()
+        for x in ties:
+            c.append([len(y['names']) for y in x])
+        count=[sum(c[x][0:j[x]-1])+1 for x in range(0,5)]
+        #print([c[x][0:j[x]] for x in range(0,5)])
+        s="{:35s}|{:13s}|{:13s}|{:13s}|{:13s}|{:13s}|".format(f"{i}",f"{count[0]} ({c[0][j[0]-1]})/ {upper}",f"{count[1]} ({c[1][j[1]-1]})/ {upper}",f"{count[2]} ({c[2][j[2]-1]})/ {upper}",f"{count[3]} ({c[3][j[3]-1]})/ {upper}",f"{count[4]} ({c[4][j[4]-1]})/ {upper}")
+        #s=f"{i} [ {count[0]} / {upper} [{j[0]}], {count[1]} / {upper} [{j[1]}], {count[2]} / {upper} [{j[2]}], {count[3]} / {upper} [{j[3]}], {count[4]} / {upper} [{j[4]}] ]"
+        logprint(s)
+        
     
     
 if PICKLE_DATA:

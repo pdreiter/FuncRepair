@@ -19,7 +19,6 @@
 #NUM=10;
 #EXE=Message_Service.trampoline.bin ;
 EXE=$1
-TEST=$2
 run_regression=0
 pass_fail=0
 test_script="./test.sh"
@@ -45,6 +44,7 @@ run_reg() {
    local EXE=$1
    local TEST=""
    local EXPECTING_NEG_TO_PASS=$2
+   local fail_fast=$3
    echo "Regression: $EXE"
    if [ $EXPECTING_NEG_TO_PASS -eq 1 ] ; then
       echo "Expecting negative tests to PASS"
@@ -61,6 +61,11 @@ run_reg() {
       if [[ $x -ne 0 ]]; then
       (( j+=1 ));
       val="FAILED"
+      if (( $fail_fast )) ; then
+          echo -e "[$i] status $x => $val $TEST TEST!";
+          echo "EXITING EARLY Due to failures!"
+          exit -1;
+      fi;
       fi;
       echo -e "[$i] status $x => $val $TEST TEST!";
    done
@@ -78,6 +83,9 @@ run_reg() {
           if [[ $x -ne 0 ]]; then
               (( k+=1 ));
               val="FAILED"
+          elif  [ $EXPECTING_NEG_TO_PASS -eq 1 ] && (( $fail_fast )); then
+              echo "EXITING EARLY Due to failures!"
+              exit -1;
           fi;
 	  else
           val="NEGOTIATION_FAILED"
@@ -113,19 +121,41 @@ args=("$@")
 (( $# == 0 )) && help_msg
 (( $# > 0 )) && \
 (( i = 0 ))
+regress=0
+fail_fast=0
 while (( i < $len )); do
     if [[ "${args[$i]}" == "-help" || "${args[$i]}" == "-h" || "${args[$i]}" == "--help" ]]; then
        help_msg
+    elif [[ "${args[$i]}" == "-reg"* ]]; then
+       regress=1
+    elif [[ "${args[$i]}" == "-num="* ]]; then
+       num_runs=$(echo ${args[$i]} | perl -p -e's/\-num=//')
+    elif [[ "${args[$i]}" == "-fail"* ]]; then
+       fail_fast=1
+       echo "Fail-Fast = $fail_fast"
+    elif [[ "${args[$i]}" == "-test="* ]]; then
+       TEST=$(echo ${args[$i]} | perl -p -e's/\-test=//')
+    elif (( $i==0 )); then
+        exe=${args[$i]}
+    #elif (( $i==1 )); then
+    #   TEST=${args[$i]}
+    #else
+    #   TEST=${args[$i]}
 	fi
+    echo "$i : ${args[$i]}"
 	(( i+=1 ))
 done
 
+echo "EXE       : $EXE"
+echo "Fail-Fast : $fail_fast"
+echo "TEST      : $TEST"
+echo "NUM_RUNS  : $num_runs"
 if [[ -z $TEST ]]; then
 #Usage[1]: ./sanity.bash <executable>
    # not expecting negative tests to pass
-   run_reg "$EXE" "0" ;
+   run_reg "$EXE" "0" $fail_fast;
    
-elif [[ "$TEST" == "-reg"* ]]; then 
+elif (( $regress == 1 )) ; then 
 #Usage[1]: ./sanity.bash <executable> -regression
    # not expecting negative tests to pass
    run_reg "$EXE" "0";
@@ -178,7 +208,7 @@ elif [[ "$TEST" == "-reg"* ]]; then
 else
 #Usage[2]: ./sanity.bash <executable> <test> [num test runs (default:10)]
 echo "Testing $EXE $TEST";
-NUM=$3;
+NUM=$num_runs;
 if [[ -z $NUM ]]; then
 NUM=10
 fi

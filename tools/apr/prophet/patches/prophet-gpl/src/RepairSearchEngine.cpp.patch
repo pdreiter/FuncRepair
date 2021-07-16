@@ -1,0 +1,23 @@
+--- prophet-gpl/src/RepairSearchEngine.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/RepairSearchEngine.cpp	2021-02-09 10:00:55.812957291 -0700
+@@ -34,7 +34,8 @@
+ #include <iostream>
+ #include <queue>
+ 
+-llvm::cl::opt<bool> DumpFeatureDetail("dump-feature", llvm::cl::init(false));
++llvm::cl::opt<bool> DumpFeatureDetail("dump-feature-detail", llvm::cl::init(false));
++//llvm::cl::opt<bool> DumpFeatureDetail("dump-feature", llvm::cl::init(false));
+ llvm::cl::opt<bool> PrintBlowupInfo("blowup", llvm::cl::init(false));
+ 
+ using namespace clang;
+@@ -119,8 +120,10 @@
+     size_t candidate_cnt = 0;
+     size_t partial_candidate_cnt = 0;
+     FeatureExtractor EX;
++    outlog_printf(1, "There are %d files\n", files.size());
+     for (size_t i = 0; i < files.size(); ++i) {
+         std::string file = files[i];
++        outlog_printf(1, "- file '%s'\n", files[i].c_str());
+         if (use_bugged_files) {
+             if (bugged_files.count(file) == 0) {
+                 continue;

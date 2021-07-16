@@ -1,0 +1,189 @@
+--- prophet-gpl/src/ExprSynthesizer.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/ExprSynthesizer.cpp	2021-02-09 10:00:55.296952406 -0700
+@@ -34,8 +34,8 @@
+ using namespace clang;
+ 
+ #define CLANG_TEST_WRAP "tclang.py"
+-#define ISNEG_TMPFILE "/tmp/neg.tmp"
+-#define ISNEG_RECORDFILE "/tmp/neg.log"
++#define ISNEG_TMPFILE "/tmp_proj/prophet/neg.tmp"
++#define ISNEG_RECORDFILE "/tmp_proj/prophet/neg.log"
+ 
+ #define BATCH_CAP 10
+ #define SYNC_CAP 200
+@@ -57,6 +57,33 @@
+ 
+ static unsigned long long the_timeout_limit = 0;
+ 
++    void create_env_file(const std::string a,const std::string b,BenchProgram& P){
++        std::string f;
++        std::vector<std::string> v= { P.getWorkdir(), P.getSrcdir(), P.getTestdir() };
++        for (std::vector<std::string>::const_iterator w=v.begin(); w!=v.end();w++) {
++            f=a;
++            if (*w != "") { f=*w+"/"+a; }
++            std::cerr << "create_env_file("<<f<<","<<b<<")" << std::endl;
++            FILE* fp=fopen(f.c_str(),"w");
++            fprintf(fp,"%s",b.c_str());
++            fclose(fp);
++        }
++    }
++    void delete_env_file(const std::string a,BenchProgram& P){
++        std::string f;
++        std::vector<std::string> v= { P.getWorkdir(), P.getSrcdir(), P.getTestdir() };
++        for (std::vector<std::string>::const_iterator w=v.begin(); w!=v.end();w++) {
++            f=a;
++            if (*w != "") { f=*w+"/"+a; }
++            std::cerr << "delete_env_file("<<f<<")" << std::endl;
++            int ret=system((std::string("mv ")+f+std::string(" ")+f+std::string(".tmp")).c_str());
++            //int ret=system((std::string("rm -rf ") + f).c_str());
++            if(ret != 0) { 
++               std::cerr << "delete_env_file("<<f<<") : failed" << std::endl;
++            }
++        }
++    }
++    
+ void dumpCandidate(SourceContextManager &M, const RepairCandidate &rc, Expr* v, double score) {
+     std::ostringstream sout;
+     sout << DumpPassedCandidate.getValue() << "-" << pass_global_cnt << ".txt";
+@@ -416,8 +443,10 @@
+     bool testNegativeCases(const BenchProgram::EnvMapTy &env) {
+         for (TestCaseSetTy::iterator it = negative_cases.begin();
+                 it != negative_cases.end(); it++)
+-            if (!testOneCase(env, *it))
++            if (!testOneCase(env, *it)) {
++                outlog_printf(2, "Failed Negative Case %lu\n",*it);
+                 return false;
++            }
+         outlog_printf(2, "Passed Negative Cases\n");
+         return true;
+     }
+@@ -540,6 +569,7 @@
+         if (!testNegativeCases(env)) {
+             codes[id].clear();
+             patches[id].clear();
++            outlog_printf(3, "Negative test cases failed\n");
+             return false;
+         }
+         outlog_printf(3, "Testing positive cases!\n");
+@@ -788,8 +818,8 @@
+         candidate_strs[id].clear();
+         for (TestCaseSetTy::iterator it = negative_cases.begin();
+                 it != negative_cases.end(); it++) {
+-            std::string tmp_out = "/tmp/__out.str";
+-            std::string tmp_exp = "/tmp/__exp.str";
++            std::string tmp_out = "/tmp_proj/prophet/__out.str";
++            std::string tmp_exp = "/tmp_proj/prophet/__exp.str";
+             BenchProgram::EnvMapTy new_env = env;
+             new_env["OUTIFFAIL"] = tmp_out;
+             new_env["EXPIFFAIL"] = tmp_exp;
+@@ -1493,6 +1523,11 @@
+         fclose(f);
+     }
+ 
++    void testEnv_insert(BenchProgram::EnvMapTy x,std::pair<std::string,std::string> a) {
++        x.insert(a);
++        create_env_file(a.first,a.second,P);
++    }
++
+     bool testNegativeCases(const BenchProgram::EnvMapTy &env,
+             std::map<unsigned long, std::vector<unsigned long> > &negative_records) {
+         negative_records.clear();
+@@ -1503,9 +1538,9 @@
+             // we give up!
+             size_t it_cnt = 0;
+             BenchProgram::EnvMapTy testEnv = env;
+-            testEnv.insert(std::make_pair("IS_NEG", "1"));
+-            testEnv.insert(std::make_pair("NEG_ARG", "1"));
+-            testEnv.insert(std::make_pair("TMP_FILE", ISNEG_TMPFILE));
++            testEnv_insert(testEnv,std::make_pair("IS_NEG", "1"));
++            testEnv_insert(testEnv,std::make_pair("NEG_ARG", "1"));
++            testEnv_insert(testEnv,std::make_pair("TMP_FILE", ISNEG_TMPFILE));
+             int ret = system((std::string("rm -rf ") + ISNEG_TMPFILE).c_str());
+             assert( ret == 0);
+             outlog_printf(5, "Testing %lu (with abstract condition)\n", *case_it);
+@@ -1534,15 +1569,21 @@
+                 if (!has_zero) break;
+                 it_cnt ++;
+             }
++            delete_env_file("IS_NEG",P);
++            delete_env_file("NEG_ARG",P);
++            delete_env_file("TMP_FILE",P);
+             // We will going to try all 1 before we finally give up this case
+             if (!passed) {
+                 testEnv = env;
+-                testEnv.insert(std::make_pair("IS_NEG", "1"));
+-                testEnv.insert(std::make_pair("NEG_ARG", "0"));
+-                testEnv.insert(std::make_pair("TMP_FILE", ISNEG_TMPFILE));
++                testEnv_insert(testEnv,std::make_pair("IS_NEG", "1"));
++                testEnv_insert(testEnv,std::make_pair("NEG_ARG", "0"));
++                testEnv_insert(testEnv,std::make_pair("TMP_FILE", ISNEG_TMPFILE));
+                 int ret = system((std::string("rm -rf ") + ISNEG_TMPFILE).c_str());
+                 assert( ret == 0);
+                 passed = P.test(std::string("src"), *case_it, testEnv, false);
++                delete_env_file("IS_NEG",P);
++                delete_env_file("NEG_ARG",P);
++                delete_env_file("TMP_FILE",P);
+                 if (passed) {
+                     std::vector<unsigned long> tmp_v = parseBranchRecord();
+                     // FIXME: strange error in wireshark, we just ignore right now
+@@ -1603,12 +1644,15 @@
+         for (TestCaseSetTy::iterator tit = negative_cases.begin();
+                 tit != negative_cases.end(); ++tit) {
+             BenchProgram::EnvMapTy testEnv = env;
+-            testEnv.insert(std::make_pair("IS_NEG", "RECORD1"));
+-            testEnv.insert(std::make_pair("NEG_ARG", ISNEG_TMPFILE));
+-            testEnv.insert(std::make_pair("TMP_FILE", ISNEG_RECORDFILE));
++            testEnv_insert(testEnv,std::make_pair("IS_NEG", "RECORD1"));
++            testEnv_insert(testEnv,std::make_pair("NEG_ARG", ISNEG_TMPFILE));
++            testEnv_insert(testEnv,std::make_pair("TMP_FILE", ISNEG_RECORDFILE));
+             //FIXME: It triggers non-deterministic things, get out!
+             if (negative_records.find(*tit) == negative_records.end()) {
+                 fprintf(stderr, "Collect value failed on case %lu!\n", *tit);
++                delete_env_file("IS_NEG",P);
++                delete_env_file("NEG_ARG",P);
++                delete_env_file("TMP_FILE",P);
+                 return false;
+             }
+             writeBranchRecord(negative_records, *tit);
+@@ -1616,6 +1660,9 @@
+             int ret = system(cmd.c_str());
+             assert( ret == 0);
+             bool passed = P.test(std::string("src"), *tit, testEnv, false);
++            delete_env_file("IS_NEG",P);
++            delete_env_file("NEG_ARG",P);
++            delete_env_file("TMP_FILE",P);
+             // FIXME: It triggers non-deterministic things, just
+             // get out
+             if (!passed) {
+@@ -1630,12 +1677,14 @@
+         for (TestCaseSetTy::iterator tit = positive_cases.begin();
+                 tit != positive_cases.end(); ++tit) {
+             BenchProgram::EnvMapTy testEnv = env;
+-            testEnv.insert(std::make_pair("IS_NEG", "RECORD0"));
+-            testEnv.insert(std::make_pair("TMP_FILE", ISNEG_RECORDFILE));
++            testEnv_insert(testEnv,std::make_pair("IS_NEG", "RECORD0"));
++            testEnv_insert(testEnv,std::make_pair("TMP_FILE", ISNEG_RECORDFILE));
+             std::string cmd = std::string("rm -rf ") + ISNEG_RECORDFILE;
+             int ret = system(cmd.c_str());
+             assert( ret == 0);
+             bool passed = P.test(std::string("src"), *tit, testEnv, false);
++            delete_env_file("IS_NEG",P);
++            delete_env_file("TMP_FILE",P);
+             caseVMap[*tit].clear();
+             // XXX: This may happen because record takes more time, and it
+             // makes the positive case to time out we simply skip if it fails
+@@ -2020,11 +2069,14 @@
+                 std::ostringstream sout;
+                 sout << i;
+                 testEnv["MUTANT_ID"] = sout.str();
++                create_env_file("MUTANT_ID",sout.str(),P);
++                outlog_printf(2, "Testing tmp[%d].id=%d",i,tmp[i].id);
+                 bool ret = T->test(testEnv, tmp[i].id);
+                 if (ret) {
+                     succ_list.push_back(std::make_pair(T, tmp[i].id));
+                     c_list.push_back(tmp[i].rc);
+                 }
++                delete_env_file("MUTANT_ID",P);
+             }
+             // We then need to invoke the post processing of these successive runs to
+             // get the results, we split this with the main test because this part may

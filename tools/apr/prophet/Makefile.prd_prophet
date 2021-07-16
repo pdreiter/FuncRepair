@@ -1,0 +1,99 @@
+
+###########################################
+# THIS MAKEFILE HAS BEEN CUSTOMIZED FOR PRD BUILD
+# AND REQUIRES :
+#          genprog_setup.bash
+# author: pdreiter
+###########################################
+
+include Makefile.prd
+PROPHET_SRC:=$(CGC_CB_DIR)/prophet/libs/src
+PROPHET_LIB:=$(PROPHET64_BASE)/src/.libs
+TOOLSDIR:=/media/external/research/APR/Prophet/cgc/tools
+PROPHET_FLAGS+=-DPROPHET 
+PROPHET_PROF:=_prophet_profile.cpp
+PROPHET_RUN:=_test_runtime.cpp
+ORIG_DEPS:=$(DEP_OBJS)
+
+ifneq ($(PROPHET_PROFILE),1)
+DEFAULT_FLAGS+= $(PROPHET_FLAGS)
+PROPHET_SRCFILES:= $(PROPHET_RUN)
+else
+PROPHET_SRCFILES:=$(PROPHET_PROF)
+CHECKFLAGS:=-lpthread
+ORIG_DEPS:=$(filter-out $(OBJDIR)/$(MYOBJ),$(DEP_OBJS))
+DEP_OBJS:=$(OBJDIR)/$(BIN).pclang.o $(ORIG_DEPS)
+endif
+
+PROPHET_FILES:=$(addprefix $(PROPHET_SRC)/,$(PROPHET_SRCFILES))
+PROPHET_OBJFILES=$(patsubst %.cpp,%.o,$(PROPHET_SRCFILES))
+PROPHET_OBJS=$(patsubst %.o,$(OBJDIR)/%.o,$(PROPHET_OBJFILES))
+DEP_OBJS:=$(DEP_OBJS) $(PROPHET_OBJS)
+LDFLAGS+=$(CHECKFLAGS)
+REPLACEMENT ?=$(REPLACEME)
+
+all: prophet_run_hook
+
+prophet_run_hook: prophet_run hook funcinsert
+
+deps: setup $(OBJDIR)/$(MYOBJ)
+
+$(OBJDIR)/$(BIN).pclang.o: $(ORIG_DEPS)
+
+info:
+	@echo info
+	@echo "ORIG_DEPS=$(ORIG_DEPS)"
+	@echo "DEP_OBJS=$(DEP_OBJS)"
+	@echo "OBJDIR=$(OBJDIR)"
+
+.FORCE: setup deps $(PROPHET_FILES) $(PROPHET_SRC)/$(PROPHET_PROF) $(PROPHET_SRC)/$(PROPHET_RUN)
+
+setup:
+	@echo setup
+	@mkdir -p $(OBJDIR)
+	@mkdir -p $(TMPDIR)
+	@touch $(MYSRC)
+	@rm -f $(OBJDIR)/$(PROPHET_OBJFILES)
+
+$(OBJDIR)/%.o: $(PROPHET_SRC)/%.cpp
+	 $(DIET_GCC) -I$(PROPHET_SRC) -nodefaultlibs -fno-stack-protector -m32 -fPIC -static-pie -shared -z now -c $< -o $@  $(INCDIRS)
+
+prophet_src: deps $(OBJDIR)/$(PROPHET_OBJFILES)
+
+prophet_profile: deps $(OBJDIR)/$(PROPHET_OBJFILES)
+
+prophet_run: deps $(OBJDIR)/$(PROPHET_OBJFILES)
+
+prophet_prof_hook: prophet 
+
+
+prophet: deps prophet_profile 
+	 # when we use gcc to generate .i file, then clang barfs on __float128
+	 # /usr/lib/gcc/x86_64-linux-gnu/8/include/stddef.h:435:3: error: unknown type name '__float128'
+	 #gcc-8  -nodefaultlibs -fno-stack-protector -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX  -m32 -fPIC -static-pie -shared -z now  --save-temps -c decompiled_source.c -o $(OBJDIR)/decompiled_source.o  -Ilibsrc
+	 # when we use clang to generate intermediate file with profile insertion points, 
+	 # then gcc barfs on typedef .* _Float(32|64)x?
+	 # so later, I am using perl to preprocess the resulting profiled source code for gcc-8 
+	@mkdir -p $(OBJDIR)
+	 /usr/bin/clang -nodefaultlibs -fno-stack-protector -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -m32 -fPIC   -z now  -E $(MYSRC) -o $(TMP1) $(INCDIRS)
+	/usr/bin/clang -Xclang -load -Xclang $(PROPHET_LIB)/libprofiler.so.0 -Xclang -plugin -Xclang err-profiler-gen -Xclang -plugin-arg-err-profiler-gen -Xclang $(TMP2) -Xclang -plugin-arg-err-profiler-gen -Xclang /tmp_proj/prophet/__index.loc -nodefaultlibs -fno-stack-protector -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -m32 -fPIC   -z now  -c $(MYSRC) -o $(OBJDIR)/$(MYOBJ) $(INCDIRS)
+	 /usr/bin/clang -Xclang -load -Xclang $(PROPHET_LIB)/libprofiler.so.0 -Xclang -plugin -Xclang err-profiler-rewrite  -Xclang -plugin-arg-err-profiler-rewrite -Xclang $(TMP2) -Xclang -plugin-arg-err-profiler-rewrite -Xclang $(TMP3) -nodefaultlibs -fno-stack-protector -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -m32 -fPIC   -z now  -c $(TMP1) -o $(OBJDIR)/$(MYOBJ) $(INCDIRS)
+	 #perl -pi -e'if (/^\s*(typedef (long )?(float|double) _Float(32|64)x?)/){ s/^/\/\//; };if (/^\s*asm\s*\(/){ s/^/  __prof_exit();\n/; }' $(TMP3)
+	 $(TOOLSDIR)/preprocess.py $(TMP3) $(TMP4)
+	 gcc-8 -I$(PROPHET_SRC) -nodefaultlibs -fno-stack-protector  -DGENPROG -DCGC_32BIT -DCGC_GCC -DCGC_GCC_32BIT -DLINUX -m32 -fPIC -static-pie -shared -z now  --save-temps -c $(TMP4) -o $(OBJDIR)/$(BIN).pclang.o  $(INCDIRS)
+	# need to use dietlibc because the profiling code uses some glibc functions like malloc/memset
+	# that break standard gcc build {linker error with ld, looking for gcc_s library, but 
+	# for static builds, this is libgcc.a, not libgcc_s.so, so gcc build has a weird build issue with static gcc}
+	$(DIET_GCC) -nodefaultlibs -m32 -fPIC -static-pie -shared -z now -fno-stack-protector $(INCDIRS) -o libhook.so  $(DEP_OBJS) -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static -lpthread 
+	@echo "Checking for unbound functions or variables"
+	#$(DIET_GCC) -m32 -fPIC -static-pie -shared -z now -fno-stack-protector $(INCDIRS) -o check $(DEP_OBJS) -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-static -lpthread 
+	#@echo -e "\nChecking for unbound functions or variables => U <func>"
+	nm libhook.so | egrep -v 'U _start' | (egrep -w 'U' ; [ "$$?" -ne "0" ] || (echo "ERROR: Unbound functions!" && /bin/false)) 
+	#@rm check
+	@echo -e " => SUCCESS! NO Unbound Functions!\n"
+	@echo $(FUNCREP) --do-not-override-so --bin $(BIN) --outbin $(DETOUR_BIN) --fn $(MYSRC) $(FUNCINSERT_PARAMS)
+	$(FUNCREP) --do-not-override-so --bin $(BIN) --outbin $(DETOUR_BIN) --fn $(MYSRC) $(FUNCINSERT_PARAMS)
+	#@[ ! -z "$(DEBUG)" ] || (echo "Removing temporary files: $(TMP1), $(TMP2), $(TMP3), $(TMP4)" && rm -rf $(TMP1) $(TMP2) $(TMP3) $(TMP4))
+	@[ ! -z "$(DEBUG)" ] || (echo "Removing temporary files: $(TMP1), $(TMP2), $(TMP3), => leaving $(TMP4)" && rm -rf $(TMP1) $(TMP2) $(TMP3) ) 
+	#$(TMP4) )
+

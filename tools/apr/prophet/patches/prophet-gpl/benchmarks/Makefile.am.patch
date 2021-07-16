@@ -1,0 +1,19 @@
+--- prophet-gpl/benchmarks/Makefile.am	2016-11-30 16:17:12.000000000 -0700
++++ prophet-gpl-64/benchmarks/Makefile.am	2021-02-09 10:00:21.656633626 -0700
+@@ -35,13 +35,15 @@
+ 	rm -rf gmp-src-tmp
+ 
+ gzip-src:
+-	git clone http://git.savannah.gnu.org/cgit/gzip.git gzip-src
++	git clone https://git.savannah.gnu.org/git/gzip.git gzip-src
+ 
+ gzip-tests: gzip-src
+ 	cp -rf gzip-src gzip-src-tmp
+ 	cd gzip-src-tmp && git checkout -f ab9eb0da6e773
+ 	cp -rf $(srcdir)/gzip-scripts/Makefile.am gzip-src-tmp/tests/Makefile.am
+ 	cp -rf $(srcdir)/gzip-scripts/hufts gzip-src-tmp/tests/hufts
++	perl -pi -e's/_IO_ftrylockfile/_IO_EOF_SEEN/g' $(gzipf)
++	perl -pi -e's/(\/\* BSD stdio derived implementations.\s+\*\/)/#if \!defined _IO_IN_BACKUP && defined __IO_EOF_SEEN\n# define _IO_IN_BACKUP 0x100\n#endif\n \/\* BSD stdio_derived_implementations\.  \*\//' gzip-src-tmp/gnulib/lib/stdio-impl.h
+ 	$(abs_top_srcdir)/tools/gzip-build.py gzip-src-tmp
+ 	cp -rf gzip-src-tmp/tests gzip-tests
+ 	chmod a+x gzip-tests/mixed

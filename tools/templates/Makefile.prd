@@ -13,9 +13,9 @@ MYINT:=$(patsubst %.c,%.i, $(MYSRC))
 
 #external scripts/tools
 ifeq (${PRD_BASE_DIR},)
-FUNCREP:="./funcinsert_opt.py"
+FUNCREP:="./funcinsert.py"
 else
-FUNCREP:="${PRD_BASE_DIR}/funcinsert_opt.py"
+FUNCREP:="${PRD_BASE_DIR}/funcinsert.py"
 endif
 DIET_GCC:=${DIET32PATH}/diet_gcc
 

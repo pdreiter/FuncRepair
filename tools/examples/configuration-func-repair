@@ -1,0 +1,17 @@
+--seed 0
+--disable-aslr
+--program decompiled_source.i
+--search ga
+--popsize 40
+--generations 10
+--compiler gcc
+--func-repair
+--func-repair-binary CGCBINARYEXE
+--func-repair-fn-name CHANGEME
+--do-not-instrument CHANGEME
+--func-repair-insert decompiled_source.c
+--trampoline-compiler-opts 
+--minimization
+--edit-script
+--func-repair-script ./funcinsert.py --genprog
+--blacklist-src-functions main

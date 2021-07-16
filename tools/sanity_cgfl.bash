@@ -29,7 +29,7 @@ profile_outdir="$outdir/cgfl_profile"
 results_dir="$outdir/cgfl_results"
 r_dir="$outdir/r"
 MIN_BYTES=50
-MIN_INSTRS=30
+MIN_INSTRS=
 
 help_msg(){
    echo -e "Usage[1]: $0 <executable> [-regression] [-num_runs=<num>] [--results=<results dir>] [--profile-out=<profile_dir>] [--r-out=<Rscript dir] [--top-k-percent=<decimal percentage>]"
@@ -128,7 +128,9 @@ get_locals(){
    alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
    L_re='\.L[[:digit:]]+'
    globals_re='((cgc__?)?(free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
-   minscreen_re=$($script_dir/screen_small_functions.py --json-in info.json --byte-min $MIN_BYTES --instr-min $MIN_INSTRS |  perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
+   instr=""
+   if [[ ! -z $MIN_INSTRS ]] ; then instr=" --instr-min $MIN_INSTRS "; fi
+   minscreen_re=$($script_dir/screen_small_functions.py --json-in info.json --byte-min $MIN_BYTES $instr |  perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
    echo "minscreen_re=$minscreen_re"
 
    specific_issue_re='((cgc__?)(gb_new|gb_reset))'

@@ -1,0 +1,22 @@
+--- prophet-gpl/src/BenchProgram.h	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/BenchProgram.h	2021-02-09 10:00:56.056959602 -0700
+@@ -124,6 +124,10 @@
+     // The test command script path, this is an absolute path!
+     std::string test_cmd;
+ 
++    std::string challenge;
++    std::string makefile;
++    std::string makefile_target;
++
+     std::string profile_dir;
+ 
+     std::string localization_filename;
+@@ -217,6 +221,8 @@
+ 
+     std::string getSrcdir() { return src_dir; }
+ 
++    std::string getTestdir() { return test_dir; }
++
+     std::string normalizePath(const std::string &);
+ 
+     //void setArgFile(const std::string &fixtest_argfile);

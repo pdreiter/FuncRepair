@@ -1,0 +1,45 @@
+--- prophet-gpl/src/ProfileErrorLocalizer.cpp	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/ProfileErrorLocalizer.cpp	2021-02-09 10:00:55.296952406 -0700
+@@ -39,7 +39,7 @@
+ extern llvm::cl::opt<bool> ForCPP;
+ 
+ void ProfileErrorLocalizer::clearProfileResult() {
+-    std::string cmd = "rm -rf /tmp/__run*.log";
++    std::string cmd = "rm -rf /tmp_proj/prophet/__run*.log";
+     int res = system(cmd.c_str());
+     assert(res == 0);
+ }
+@@ -50,14 +50,14 @@
+ 
+     std::map<SourcePositionTy, ProfileInfoTy> M;
+     M.clear();
+-    DIR* dp = opendir("/tmp");
++    DIR* dp = opendir("/tmp_proj/prophet");
+     struct dirent *dirp;
+     while (((dirp = readdir(dp)))) {
+         std::string nstr = dirp->d_name;
+         if ((nstr.substr(0,5) != "__run") || (nstr.substr(nstr.size() - 4, 4) != ".log"))
+             continue;
+ 
+-        std::ifstream fin(("/tmp/" + nstr).c_str(), std::ifstream::in);
++        std::ifstream fin(("/tmp_proj/prophet/" + nstr).c_str(), std::ifstream::in);
+         std::string line1, line2;
+         std::string pid = nstr.substr(5, nstr.size() - 4 - 5);
+         // We get an empty pid, FIXME investigate why this will happen
+@@ -112,7 +112,7 @@
+ }
+ 
+ void clearTmpDirectory() {
+-    int ret = system("rm -rf /tmp/__* /tmp/pclang*");
++    int ret = system("rm -rf /tmp_proj/prophet/__* /tmp_proj/prophet/pclang*");
+     assert(ret == 0);
+ }
+ 
+@@ -291,6 +291,7 @@
+     : P(P), negative_cases(P.getNegativeCaseSet()), positive_cases(P.getPositiveCaseSet())
+ {
+     LI = NULL;
++    fprintf(stderr, "bugged_file: %s\n", res_file.c_str());
+     std::ifstream fin(res_file.c_str(), std::ifstream::in);
+     assert(fin.is_open());
+     ResRecordTy tmp;

@@ -1,0 +1,11 @@
+--- prophet-gpl/src/ProfileErrorLocalizer.h	2016-11-30 16:19:08.000000000 -0700
++++ prophet-gpl-64/src/ProfileErrorLocalizer.h	2021-02-09 10:00:55.296952406 -0700
+@@ -23,7 +23,7 @@
+ #include <set>
+ #include <map>
+ 
+-#define INDEX_FILE "/tmp/__index.loc"
++#define INDEX_FILE "/tmp_proj/prophet/__index.loc"
+ 
+ class BenchProgram;
+ 

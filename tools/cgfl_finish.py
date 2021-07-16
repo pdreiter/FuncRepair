@@ -20,7 +20,7 @@ class cgfl:
         if self.cg_out_dir:
             test_files=glob.glob("{}/*.cg.out".format(self.cg_out_dir))
             for t in test_files:
-                s="{}/([pn]\d+)\.cg\.out".format(self.cg_out_dir)
+                s="\/([pn]\d+)\.cg\.out".format(self.cg_out_dir)
                 t_re=re.compile(s)
                 t__ = t_re.search(t)
                 if t__:
@@ -30,6 +30,7 @@ class cgfl:
                     self.test_files[test]=t
             if not self.test_files or len(self.test_files)==0:
                 print("ERROR: No valid CGFL data from {} test runs!!".format(self.cb),file=sys.stderr)
+                print(f"test_files : {test_files}",file=sys.stderr)
                 print(f"Check out : {self.cg_out_dir}/*.cg.out",file=sys.stderr)
 
     def annotate(self):
@@ -165,7 +166,7 @@ if __name__ == "__main__":
     alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
     #L_re='\.L[[:digit:]]+'
     L_re='\.L\d+'
-    globals_re='((cgc__?)?(free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
+    globals_re='((cgc__?)?(free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strncat|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
     specific_issue_re='((cgc__?)(gb_new|gb_reset))'
     exclude_me="|".join([globals_re,init_re,fini_re,thunk_re,reg_re,
                          glob_re,start_re,alloc_re,L_re,specific_issue_re])
@@ -189,7 +190,7 @@ if __name__ == "__main__":
             help='CGFL Input directory to get annotation information')
         #parser.add_argument('--json-in',dest='json_in',action='store',default=None, 
         #    help='json input file to get ELF information')
-        parser.add_argument('--instr-min',dest='min_inst',action='store',default=30, 
+        parser.add_argument('--instr-min',dest='min_inst',action='store',default=None, 
             help='minimum number of instructions a function requires to be outputted')
         parser.add_argument('--byte-min',dest='min_bytes',action='store',default=50, 
             help='minimum number of bytes a function requires to be outputted')
@@ -238,9 +239,11 @@ if __name__ == "__main__":
     if args.exe:
         import subprocess,shlex
         and_min="" if not args.min_AND else "--AND-min"
+        if args.min_inst:
+            and_min+=f" --instr-min {args.min_inst} "
         syms_exe=get_syms_cmd.format("{}/screen_small_functions.py".format(scriptdir),
                                  args.exe, args.json, 
-                                 "--instr-min {} --byte-min {} {}".format(args.min_inst,args.min_bytes,and_min)
+                                 " --byte-min {} {}".format(args.min_bytes,and_min)
                                     )
         print("[ RUNNING ] Obtaining executable symbols [needed]:")
         print(syms_exe)

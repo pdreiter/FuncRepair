@@ -1,0 +1,48 @@
+SHELL:=/bin/bash
+FUNCREP:="${PRD_BASE_DIR}/funcinsert.py"
+
+include prd_include.mk
+
+# directories
+TMPDIR:=tmp
+OBJDIR:=depobj
+
+MYOBJ:=$(patsubst %.c,%.o, $(MYSRC))
+MYINT:=$(patsubst %.c,%.i, $(MYSRC))
+MYS:=$(patsubst %.c,%.s, $(MYSRC))
+
+DEP_OBJS:=$(patsubst %.c, $(OBJDIR)/%.o, $(MYSRC))
+
+CFLAGS:=
+DEFAULT_FLAGS:=-m32 $(CFLAGS) -fno-stack-protector -nostdlib -nodefaultlibs -fpic -fPIC -static-pie -shared -z now 
+LDFLAGS:=-Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z,now,-z,norelro,-T,script.ld,-static
+
+COMPILE:=gcc-8
+IDIRS_:=./
+INCDIRS:=$(patsubst %,-I%, $(IDIRS_))
+
+$(MYSRC):
+	@touch $(MYSRC)
+	@rm -f $(OBJDIR)/$(MYOBJ)
+	@rm -f $(MYINT)
+
+$(OBJDIR)/$(MYOBJ): $(MYSRC) $(DEP_OBJS)
+	@mkdir -p $(OBJDIR)
+	@mkdir -p $(TMPDIR)
+	$(COMPILE) $(DEFAULT_FLAGS) --save-temps -c $< -o $@  $(INCDIRS)
+	@$(shell [[ -f "*.[os]" ]] && mv *.[os] $(TMPDIR)/ )
+
+hook: $(OBJDIR)/$(MYOBJ) 
+	@echo $(DEP_OBJS)
+	$(COMPILE) $(DEFAULT_FLAGS) -o libhook.so $(DEP_OBJS) $(LDFLAGS) $(INCDIRS)
+	@$(COMPILE) $(DEFAULT_FLAGS) -o check $(DEP_OBJS) $(INCDIRS) 
+	@echo -e "\nChecking for unbound functions or variables => U <func>"
+	@nm check | (egrep -w 'U'; [[ "$$?" -ne "0" ]] || (echo "Error! Unbound functions!" && rm check && /bin/false))
+	@rm check && echo -e " => SUCCESS! NO Unbound Functions\n"
+
+funcinsert: hook
+	@echo $(FUNCREP) --do-not-override-so --bin $(BIN) --outbin $(DETOUR_BIN) --fn $(MYSRC) $(FUNCINSERT_PARAMS)
+	$(FUNCREP) --do-not-override-so --bin $(BIN) --outbin $(DETOUR_BIN) --fn $(MYSRC) $(FUNCINSERT_PARAMS)
+
+clean:
+	rm -rf $(TMPDIR) $(OBJDIR) $(MYINT) $(MYS) libhook.so

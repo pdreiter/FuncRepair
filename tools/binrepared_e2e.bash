@@ -4,6 +4,7 @@ cb=$1
 mydestdir=$2
 echo "DESTINATION $mydestdir"
 MYBYTES=$3
+MYINSTR=$4
 
 
 # 0 : setup
@@ -29,9 +30,10 @@ MYCPP=g++-8
 
 #TOP_K_PERCENT=0.25
 TOP_K_PERCENT=0.35
-MIN_BYTES_FN=65
+# (52 - 3) / 7 = 7 stack pushes
+MIN_BYTES_FN=52
 [[ ! -z $MYBYTES ]] && (( $MYBYTES>$MIN_BYTES_FN )) && MIN_BYTES_FN=$MYBYTES
-MIN_INSTRS_FN=40
+MIN_INSTRS_FN=$MYINSTR
 
 # BinREPARED destination variables
 if [[ -z $mydestdir ]]; then
@@ -101,15 +103,57 @@ if (( ${EXECUTE[0]} == 1 )); then
     elif [[ ! -e $cb_build/polls ]]; then
         ln -sf $BASE_DIR/challenges/$cb/poller $cb_build/
     fi
-    [[ ! -e $cb_build/test.sh ]] && ln -sf $BASE_DIR/genprog/$cb/test.sh $cb_build/
+    if [[ ! -e $cb_build/test.sh ]]; then
+     x=$(wc -l $BASE_DIR/genprog/$cb/test.sh | awk '{print $1}')
+     head -n 1 $BASE_DIR/genprog/$cb/test.sh >> $cb_build/test.sh
+     echo "export LD_BIND_NOW=1" >> $cb_build/test.sh
+     tail -n $(( $x-1 )) $BASE_DIR/genprog/$cb/test.sh >> $cb_build/test.sh
+     chmod +x $cb_build/test.sh
+    fi
     [[ ! -e $cb_build/configuration-func-repair ]] && ln -sf $BASE_DIR/genprog/$cb/configuration-func-repair $cb_build/
     [[ ! -e $cb_build/tools ]] && ln -sf $CGC_TOOL_DIR $cb_build/tools
    
     [[ -e $cb_build/$cb ]] && echo "original binary build : SUCCESS" >> $status_log
     [[ ! -e $cb_build/$cb ]] && echo "original binary build : FAIL" >> $status_log && exit -1
 
+    pushd $cb_build > /dev/null
+    echo "--------------------------------"
+    echo "Running sanity tests on $cb image"
+    sanity_log="sanity.$cb.log"
+    $TOOL_DIR/sanity.bash $cb -fail-fast |& tee $sanity_log
+    retval=$?
+    FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
+    if (( $FAILED==1 )); then
+        echo "CB sanity check [early fail] : FAIL" >> $status_log && exit -1
+    fi
+    pos=$(tail -n 10 $sanity_log | egrep ' failed POSITIVE tests');
+    neg=$(tail -n 10 $sanity_log | egrep ' failed NEGATIVE tests');
+    negofail=$(tail -n 10 $sanity_log | egrep 'negotiation_failed NEGATIVE tests');
+    pf=$(echo $pos | awk '{print $6}');
+    pa=$(echo $pos | awk '{print $NF}');
+    nf=$(echo $neg | awk '{print $6}');
+    na=$(echo $neg | awk '{print $NF}');
+    negof=$(echo $negofail | awk '{print $6}');
+    negoa=$(echo $negofail | awk '{print $NF}');
+    if (( $pa == 0 )); then 
+        echo "CB sanity check [ZERO POSITIVE TESTS] : FAIL" >> $status_log && exit -1
+    fi;
+    if (( $na == 0 )); then 
+        echo "CB sanity check [ZERO NEGATIVE TESTS] : FAIL" >> $status_log && exit -1
+    fi;
+    if (( $na != $nf )); then
+        echo "CB sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] - NEGATIVE TEST ISSUE : FAIL" >> $status_log && exit -1
+    elif (( $pf != 0 )); then
+        echo "CB sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] - POSITIVE TEST ISSUE : FAIL" >> $status_log && exit -1
+    else 
+        echo "CB sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : SUCCESS" >> $status_log
+    fi;
+    popd > /dev/null
+
     echo "$TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json"
     $TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json
+
+
 fi
 
 ##########################################################################
@@ -131,17 +175,26 @@ if (( ${EXECUTE[1]} == 1 )); then
         (( ${RESET[1]} >= 3 )) && [[ -e $r_out/$cb.r ]]  && rm -f $r_out/$cb.r
         (( ${RESET[1]} >= 4 )) && [[ -e $ranked_out/$cb.top_rank.list ]]  && rm $ranked_out/$cb.top_rank.list
     fi
+    if [[ ! -e $cb_build/info.json ]]; then 
+    echo "$TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json"
+    $TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json
+    fi
    
    
     if [[ ! -e $profile_out ]] ; then 
         $TOOL_DIR/convert_test_to_cgfl.bash $cb --src=$builddir --logdir=$profile_out
         #ln -sf $CGC_CB_DIR/genprog/$cb/test_cgfl.sh build32/challenges/$cb/ ;
         pushd $cb_build > /dev/null;
+        instr=""
+        if [[ ! -z $MIN_INSTRS_FN ]]; then
+             instr=" --min-instrs $MIN_INSTRS_FN"
+        fi
         echo "$TOOL_DIR/sanity_cgfl.bash $cb --profile-out=$profile_out \
                   --r-out=$r_out --results=$processed_out --top-k-percent=$TOP_K_PERCENT \
-                  --min-bytes $MIN_BYTES_FN --min-instrs $MIN_INSTRS_FN |& tee sanity_cgfl.log;"
+                  --min-bytes $MIN_BYTES_FN $instr |& tee sanity_cgfl.log;"
         $TOOL_DIR/sanity_cgfl.bash $cb --profile-out=$profile_out \
-                  --r-out=$r_out --results=$processed_out --top-k-percent=$TOP_K_PERCENT |& tee sanity_cgfl.log;
+                  --r-out=$r_out --results=$processed_out --top-k-percent=$TOP_K_PERCENT \
+                  --min-bytes $MIN_BYTES_FN $instr |& tee sanity_cgfl.log;
         popd > /dev/null
     fi
     if [[ ! -e $r_out/$cb.r  ]] ; then 
@@ -149,15 +202,23 @@ if (( ${EXECUTE[1]} == 1 )); then
         #$TOOL_DIR/calc_susp_pp.py --ext ".dict" --in "$processed_out" --out $cb_build --all_rank \
         #  --pickle --standardize --print --r_input --r-out $r_out \
         #  --cb $cb --top-k-percent $TOP_K_PERCENT > $processed_out/$cb.calc_susp_pp.log 2> $processed_out/$cb.rscript.log
+        instr=""
+        if [[ ! -z $MIN_INSTRS_FN ]]; then
+             instr=" --instr-min $MIN_INSTRS_FN"
+        fi
         echo "$TOOL_DIR/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/build/include/libcgc.so \
         --src $BASE_DIR/challenges/$cb/src \
-        --results $processed_out"
+        --results $processed_out \
+        --byte-min $MIN_BYTES_FN \
+        $instr"
 
         $TOOL_DIR/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/$cb/build/include/libcgc.so \
         --src $BASE_DIR/challenges/$cb/src \
-        --results $processed_out
+        --results $processed_out \
+        --byte-min $MIN_BYTES_FN \
+        $instr
 
     fi
     if [[ ! -e $r_out/$cb.r  ]] ; then 
@@ -200,7 +261,9 @@ if (( ${EXECUTE[2]} == 1 )); then
     echo "Executing DECOMP stage"
     echo "-----------------------"
     (( ${RESET[2]} >= 0 )) && echo "Reseting DECOMP substage >= ${RESET[2]}" && rm -rf $decomp_test $decomp_in/$cb $decomp_out/$cb
-    if [[ ! -e $decomp_in/$cb.target_list  ]]; then 
+    if [[ -e $decomp_in/$cb.target_list  ]]; then 
+        echo "decompilation previously run for $cb"
+    elif [[ ! -e $decomp_in/$cb.target_list  ]]; then 
         mkdir -p $decomp_in $decomp_out $decomp_test
     
        # note $decomp_out/$cb is generated by decompilation script
@@ -213,11 +276,12 @@ if (( ${EXECUTE[2]} == 1 )); then
             dout="$decomp_test/out.$i"
             mkdir -p $din $dout
             echo -n "$cb,$cb_build/$cb,$f" > $din/$cb.$i.target_list
-            python3 $DECOMP_TOOL_DIR/genprog_multidecomp_type2_ida.py --target_list \
+            python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
             $din/$cb.$i.target_list --ouput_directory $dout \
             --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $dout/multidecomp.log
+            echo "====DONE====" >> $dout/multidecomp.log
             (( i+=1 ))
-            [[ ! -e $dout/$cb ]] && echo "decompilation [Decompilation] $f : FAILED" >> $status_log && continue
+            [[ ! -e $dout/$cb ]] && echo "decompilation [Decompilation] $f : FAIL" >> $status_log && continue
             cp -v $TEMPLATES_DIR/Makefile.prd $dout/$cb/
             cp -v $TEMPLATES_DIR/script.ld $dout/$cb/
             cp -v $dout/$cb/${cb}_recomp.c $dout/$cb/${cb}_recomp.c.orig 
@@ -233,6 +297,8 @@ if (( ${EXECUTE[2]} == 1 )); then
             pushd $dout/$cb > /dev/null
             make -f Makefile.prd clean hook |& tee make.decomp_hook.log
             [[ ! -e libhook.so ]] && echo "decompilation [Recompilation] $f : FAILED" >> $status_log && popd > /dev/null &&  continue
+            x=$(egrep -c 'Error\! Unbound functions\!' make.decomp_hook.log)
+            (( $x>0 )) && echo "decompilation [Recompilation Symbol Binding] $f : FAILED" >> $status_log && popd > /dev/null &&  continue
             $BASE_DIR/genprog_ida/create_asm_multidetour.py --json-in prd_info.json --file-to-objdump libhook.so --source ${cb}_recomp.c
             diff --brief ${cb}_recomp.c ${cb}_recomp.c.orig &> /dev/null ; diff_ret=$?
             (( $?!=0 )) && echo "decompilation [Inline ASM Insertion] $f : FAIL" >> $status_log && exit -1
@@ -243,7 +309,12 @@ if (( ${EXECUTE[2]} == 1 )); then
             sanity_log="sanity.trampoline.log"
             echo "--------------------------------"
             echo "Running sanity tests on $f image"
-            $TOOL_DIR/sanity.bash $cb.trampoline.bin |& tee $sanity_log
+            $TOOL_DIR/sanity.bash $cb.trampoline.bin -fail-fast |& tee $sanity_log
+            retval=$?
+            FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
+            if (( $FAILED==1 )); then
+                echo "PRD [$f] sanity check [early fail] : FAIL" >> $status_log && popd > /dev/null && continue
+            fi
             pos=$(tail -n 10 $sanity_log | egrep ' failed POSITIVE tests');
             neg=$(tail -n 10 $sanity_log | egrep ' failed NEGATIVE tests');
             negofail=$(tail -n 10 $sanity_log | egrep 'negotiation_failed NEGATIVE tests');
@@ -254,11 +325,11 @@ if (( ${EXECUTE[2]} == 1 )); then
             negof=$(echo $negofail | awk '{print $6}');
             negoa=$(echo $negofail | awk '{print $NF}');
             if (( $na != $nf )); then
-                echo "sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] $f : FAIL" >> $status_log && popd > /dev/null && continue
+                echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && popd > /dev/null && continue
             elif (( $pf != 0 )); then
-                echo "sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] $f : FAIL" >> $status_log && popd > /dev/null && continue
+                echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && popd > /dev/null && continue
             else 
-                echo "sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] $f : SUCCESS" >> $status_log
+                echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : SUCCESS" >> $status_log
             fi;
     
             if [[ $valid != "" ]]; then valid+=":"; fi
@@ -275,9 +346,10 @@ if (( ${EXECUTE[2]} == 1 )); then
     fi
 
     if [[ ! -e $decomp_out/$cb ]]; then 
-       python3 $DECOMP_TOOL_DIR/genprog_multidecomp_type2_ida.py --target_list \
+       python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
         $decomp_in/$cb.target_list --ouput_directory $decomp_out \
-        --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $decomp_out/multidecomp.log
+        --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $decomp_out/multidecomp.$cb.log
+        mv $decomp_out/multidecomp.$cb.log $decomp_out/$cb/multidecomp.log
     fi 
     [[ ! -e $decomp_out/$cb ]] && echo "decompilation [Decompilation] : FAIL" >> $status_log && exit -1
     cp $TEMPLATES_DIR/Makefile.prd $decomp_out/$cb/
@@ -291,8 +363,10 @@ if (( ${EXECUTE[2]} == 1 )); then
            echo "Decompiled content failed to recompile for $cb!"
            echo "Exiting..."
            echo "decompilation [Recompilation] : FAIL" >> $status_log
-           exit
+           exit -1
         fi
+        x=$(egrep -c 'Error\! Unbound functions\!' make.decomp_hook.log)
+        (( $x>0 )) && echo "decompilation [Recompilation Symbol Binding] : FAILED" >> $status_log && exit -1
         $BASE_DIR/genprog_ida/create_asm_multidetour.py --json-in prd_info.json --file-to-objdump libhook.so --source ${cb}_recomp.c
         diff --brief ${cb}_recomp.c ${cb}_recomp.c.orig &> /dev/null ; diff_ret=$?
         (( $?!=0 )) && echo "decompilation [Inline ASM Insertion] $f : FAIL" >> $status_log && exit -1
@@ -302,6 +376,7 @@ if (( ${EXECUTE[2]} == 1 )); then
     
     popd > /dev/null
 
+    [[ ! -e $decomp_out/$cb/$cb.trampoline.bin ]] && echo "decompilation : FAIL" >> $status_log && exit -1
     [[ -e $decomp_out/$cb/$cb.trampoline.bin ]] && echo "decompilation : SUCCESS" >> $status_log 
 
 fi
@@ -321,7 +396,11 @@ if (( ${EXECUTE[3]} == 1 )); then
     make -f Makefile.prd clean hook funcinsert |& tee make.decomp_hook.log
    
     sanity_log="sanity.trampoline.log"
-    $TOOL_DIR/sanity.bash $cb.trampoline.bin |& tee $sanity_log
+    $TOOL_DIR/sanity.bash $cb.trampoline.bin -fail-fast |& tee $sanity_log
+    FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
+    if (( $FAILED==1 )); then
+        echo "PRD sanity check [early fail] : FAIL" >> $status_log && exit -1
+    fi
     pos=$(tail -n 10 $sanity_log | egrep ' failed POSITIVE tests');
     neg=$(tail -n 10 $sanity_log | egrep ' failed NEGATIVE tests');
     negofail=$(tail -n 10 $sanity_log | egrep 'negotiation_failed NEGATIVE tests');
@@ -332,11 +411,11 @@ if (( ${EXECUTE[3]} == 1 )); then
     negof=$(echo $negofail | awk '{print $6}');
     negoa=$(echo $negofail | awk '{print $NF}');
     if (( $na != $nf )); then
-        echo "sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && exit -1
+        echo "PRD sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && exit -1
     elif (( $pf != 0 )); then
-        echo "sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && exit -1
+        echo "PRD sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && exit -1
     else 
-        echo "sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : SUCCESS" >> $status_log
+        echo "PRD sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : SUCCESS" >> $status_log
     fi;
    
    popd > /dev/null
@@ -404,12 +483,13 @@ if (( ${EXECUTE[5]} == 1 )); then
    echo "echo \"Processing $cb \"" >> $apr_gp_reg
    echo "echo \"Processing $cb \"" >> $apr_p_reg
 
-   gpscripts=$(ls $aprdir/scripts/gp.$cb.pov*.bash)
-   echo -e "\nfor i in $gpscripts do\n while (( \$(jobs|wc -l)>=10 )); do sleep 3600; done;\n\t \$i& \ndone" \
+   gpscripts=$(ls $aprdir/scripts/gp.$cb.pov*.bash | sed 's/\.bash/\.bash \\/g')"\n"
+   echo -e "\nfor i in $gpscripts ; do\n while (( \$(jobs|wc -l)>=10 )); do sleep 3600; done;\n\t \$i& \ndone" \
        >> $apr_gp_reg
    echo $aprdir/scripts/prophet.$cb.bash >> $apr_p_reg
    echo "echo \"DONE - Processing $cb \"" >> $apr_gp_reg
    echo "echo \"DONE - Processing $cb \"" >> $apr_p_reg
+   echo "APR set up : SUCCESS" >> $status_log
 
 fi
 ############################################################################

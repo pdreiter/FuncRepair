@@ -1,0 +1,25 @@
+--- prophet-gpl/tools/gzip-build.py	2016-11-30 16:19:11.000000000 -0700
++++ prophet-gpl-64/tools/gzip-build.py	2021-02-09 10:00:56.152960512 -0700
+@@ -82,6 +82,22 @@
+             exit(1);
+ 
+     if not config_only:
++        if (path.exists("gnulib/lib/stdio-impl.h")):
++            print "Pre-processing for GLIBC >= 2.28";
++            #p = subprocess.call("perl -pi -e's/_IO_ftrylockfile/_IO_EOF_SEEN/g' gzip-src-tmp/lib/fseeko.c gzip-src-tmp/gnulib/lib/fpurge.c gzip-src-tmp/gnulib/lib/freadable.c gzip-src-tmp/gnulib/lib/freadptr.c gzip-src-tmp/gnulib/lib/fflush.c gzip-src-tmp/gnulib/lib/fbufmode.c gzip-src-tmp/gnulib/lib/freadseek.c gzip-src-tmp/gnulib/lib/fseeko.c gzip-src-tmp/gnulib/lib/fwritable.c gzip-src-tmp/gnulib/lib/freading.c gzip-src-tmp/gnulib/lib/fwriting.c gzip-src-tmp/gnulib/lib/fseterr.c" , shell = True, env = my_env);
++            #ret = subprocess.call(["perl","-pi","-e's/_IO_ftrylockfile/_IO_EOF_SEEN/g'","gzip-src-tmp/lib/fseeko.c","gzip-src-tmp/gnulib/lib/fpurge.c","gzip-src-tmp/gnulib/lib/freadable.c","gzip-src-tmp/gnulib/lib/freadptr.c","gzip-src-tmp/gnulib/lib/fflush.c","gzip-src-tmp/gnulib/lib/fbufmode.c","gzip-src-tmp/gnulib/lib/freadseek.c","gzip-src-tmp/gnulib/lib/fseeko.c","gzip-src-tmp/gnulib/lib/fwritable.c","gzip-src-tmp/gnulib/lib/freading.c","gzip-src-tmp/gnulib/lib/fwriting.c","gzip-src-tmp/gnulib/lib/fseterr.c" ], shell = True, env = my_env);
++            #ret = subprocess.call(["perl","-pi","-e's/_IO_ftrylockfile/_IO_EOF_SEEN/g'","lib/fseeko.c","gnulib/lib/fpurge.c","gnulib/lib/freadable.c","gnulib/lib/freadptr.c","gnulib/lib/fflush.c","gnulib/lib/fbufmode.c","gnulib/lib/freadseek.c","gnulib/lib/fseeko.c","gnulib/lib/fwritable.c","gnulib/lib/freading.c","gnulib/lib/fwriting.c","gnulib/lib/fseterr.c" ], shell = True, env = my_env);
++            p = subprocess.call("perl -pi -e's/_IO_ftrylockfile/_IO_EOF_SEEN/g' lib/fseeko.c gnulib/lib/fpurge.c gnulib/lib/freadable.c gnulib/lib/freadptr.c gnulib/lib/fflush.c gnulib/lib/fbufmode.c gnulib/lib/freadseek.c gnulib/lib/fseeko.c gnulib/lib/fwritable.c gnulib/lib/freading.c gnulib/lib/fwriting.c gnulib/lib/fseterr.c gnulib/lib/freadahead.c" , shell = True, env = my_env);
++            print "First perl command returned '%d' " %p;
++            ret = p;
++            #ret = ret or subprocess.call([ "perl","-pi","-e's/(\/\* BSD stdio derived implementations.\s+\*\/)/#if \!defined _IO_IN_BACKUP && defined __IO_EOF_SEEN\n# define _IO_IN_BACKUP 0x100\n#endif\n \/\* BSD stdio_derived_implementations\.  \*\//'","gzip-src-tmp/gnulib/lib/stdio-impl.h" ], shell=True, env=my_env);
++            #ret = ret or subprocess.call([ "perl","-pi","-e's/(\/\* BSD stdio derived implementations.\s+\*\/)/#if \!defined _IO_IN_BACKUP && defined __IO_EOF_SEEN\n# define _IO_IN_BACKUP 0x100\n#endif\n \/\* BSD stdio_derived_implementations\.  \*\//'","gnulib/lib/stdio-impl.h" ], shell=True, env=my_env);
++            p = subprocess.call("perl -pi -e's/(\/\* BSD stdio derived implementations.\s+\*\/)/#if \!defined _IO_IN_BACKUP && defined _IO_EOF_SEEN\n# define _IO_IN_BACKUP 0x100\n#endif\n \/\* BSD stdio_derived_implementations\.  \*\//' gnulib/lib/stdio-impl.h lib/stdio-impl.h" , shell=True, env=my_env);
++            #p = subprocess.call([ "perl -pi -e's/(\/\* BSD stdio derived implementations.\s+\*\/)/#if \!defined _IO_IN_BACKUP && defined __IO_EOF_SEEN\n# define _IO_IN_BACKUP 0x100\n#endif\n \/\* BSD stdio_derived_implementations\.  \*\//' gzip-src-tmp/gnulib/lib/stdio-impl.h" ], shell=True, env=my_env);
++            print "Second perl command returned '%d' " %p;
++            ret = ret | p;
++            if (ret != 0):
++                print "Failed to port to glibc >=2.28";
+         ret = subprocess.call(["make"], env = my_env);
+         if ret != 0:
+             print "Failed to make!";
