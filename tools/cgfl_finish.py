@@ -14,7 +14,9 @@ class cgfl:
         self.cg_annotate="callgrind_annotate --include={} --threshold=100 {}/{}.cg.out"
         self.raw_data=dict()
         self.screened_data=dict()
-        self.valid_funcs=valid_funcs
+        self.valid_funcs=list(valid_funcs)
+        #for i in valid_funcs:
+        #    print(f" - '{i}'")
         import glob
         self.test_files=None
         if self.cg_out_dir:
@@ -60,12 +62,14 @@ class cgfl:
         lines=output.split('\n')
         #(echo "{"; perl -p -e'if (/^\s*((\d+,)*\d+)\s+\S+:([^\s\(]+)(\s+|\()/){ my ($func,$val)=($3,$1); $val=~s/,//g; print "\"$func\":$val,\n";} undef $_;' $log_dir/tmp/$TEST.annot; echo "}") > $log_dir/tmp/$TEST.dict; 
 
-        func_re=re.compile("^\s*((\d+,)*\d+)\s+\S+:([^\s\(]+)(\s+|\()")
+        func_re=re.compile("^\s*((\d+,)*\d+)\s+\S+(?<!:):(?!:)([^\s\(]+)(\s+|\()")
         rawhash=dict()
         filteredhash=dict()
         for x in lines:
             fn=func_re.search(x)
-            if fn:
+            if not fn:
+                pass
+            elif fn:
                 val=int(re.sub(',','',fn.group(1)))
                 func=fn.group(3)
                 rawhash[func]=val
@@ -257,7 +261,9 @@ if __name__ == "__main__":
             if not y:
                 if not satisfied:
                     satisfied=list()
-                satisfied.append(f)
+                xf=f.split("(",1)[0]
+                xf=re.sub("^\s*const\s*","",xf)
+                satisfied.append(xf)
         output=serr.decode('utf-8')
         import sys
         print(output,file=sys.stderr)

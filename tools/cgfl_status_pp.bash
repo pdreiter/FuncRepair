@@ -18,9 +18,11 @@ for i in $cb; do
        susp_file=$destdir/build/$i/susp-fn.log
        [[ ! -e $susp_file ]] && susp_file=$destdir/build/$i/susp-default.std.log
 	   num=$(egrep -c -w $j $destdir/cgfl/cgfl_rank/$i/$i.top_rank.list);
-       (( total_fns=$(tail -n 1 $susp_file | sed 's/|/ /g' | awk '{print $1}')+1 ))
+       total_fns=0
        if (( $(egrep -c 'Ranking per function with collection of ties' $susp_file)>0 )); then
           (( total_fns=$(egrep -a2 'Ranking per function with collection of ties' $susp_file | head -n 1 | sed 's/|/ /g' | awk '{print $1}')+1 ))
+       else
+          (( total_fns=$(tail -n 1 $susp_file | sed 's/|/ /g' | awk '{print $1}')+1 ))
        fi
 	   if (( $num==0 )); then 
 		  rank="undefined"
