@@ -14,6 +14,7 @@ for i in $cb; do
 	   echo -e "\n$i : no cgfl data"; continue; 
 	fi; 
 	missing=0;cnt=0; missing_fns=""; 
+    rank_size=$(wc -w $destdir/cgfl/cgfl_rank/$i/$i.*seed_.results.log | head -n 1 | awk '{print $1}')
 	for j in $(cat patched_functions/${i}_info | perl -p -e's/^[^:]+: */ /;s/\n$//' | perl -p -e's/$/\n/;s/(\sstruct|struct\s)//g'); do 
        susp_file=$destdir/build/$i/susp-fn.log
        [[ ! -e $susp_file ]] && susp_file=$destdir/build/$i/susp-default.std.log
@@ -38,13 +39,12 @@ for i in $cb; do
               done
               rank=$rank"]"
 		  fi
-	      missing_fns+="\n - $j [ susp_ranks : $rank ]"; (( missing+=1 )); 
+	      missing_fns+="\n - $j [ susp_ranks : $rank ] [ $rank_size / $total_fns ]"; (( missing+=1 )); 
           x=$(cat $destdir/build/$i/info.json | perl -p -e"if(/(\"$j\": \{\"num_instructions\": \d+, \"num_calls\": \d+, \"num_bytes\": \d+)(.*)/){ print \"\$1\}\"; }; undef \$_; ")
           missing_fns+="\n\t$x"
 	   fi; 
 	   (( cnt+=1 )); 
 	done; 
-    rank_size=$(wc -w $destdir/cgfl/cgfl_rank/$i/$i.*seed_.results.log | head -n 1 | awk '{print $1}')
 	(( found=$cnt-$missing ));  
 	result="$i : $found / $cnt [ $rank_size / $total_fns ]"; 
 	if (( $found==$cnt )); then

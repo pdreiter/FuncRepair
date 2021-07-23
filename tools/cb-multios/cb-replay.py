@@ -95,8 +95,9 @@ def write_json():
         dest=f"{test['id']}.pkl"
         if os.path.exists(dest):
             os.remove(dest)
-        if not os.path.exists(os.path.dirname(dest)):
-            os.makedirs(os.path.dirname(dest))
+        p=os.path.dirname(dest)
+        if p!="" and not os.path.exists(p):
+            os.makedirs(p)
         with open(dest,'wb') as f:
             import pickle
             pickle.dump(test,f)

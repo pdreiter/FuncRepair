@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument('--graphs',dest='graphs',action='store_true',default=False);
     parser.add_argument('--standardize',dest='standardize',action='store_true',default=False);
     parser.add_argument('--r_input',dest='r_input',action='store_true',default=False);
+    parser.add_argument('--r-seed',dest='r_seed',action='store',default="NULL");
     parser.add_argument('--top-k-min',dest='top_k_min',action='store',default=10,
     help="Specifies top k minimum i.e. 'min(top_k_percent*size,10)'");
     parser.add_argument('--top-k-percent',dest='top_k',action='store',default=0.25,
@@ -660,7 +661,7 @@ if args.r_input:
     rscript="#!/usr/bin/Rscript\n\n"
     rscript+="library(\"RankAggreg\")\n"
     rscript+="args = commandArgs(trailingOnly=TRUE) \n"
-    rscript+="rseed = NULL\n"
+    rscript+=f"rseed = {args.r_seed}"+"\n"
     rscript+="if (length(args)==1) {\n     rseed = args[1]\n}\n"
     rscript+="ofile=paste(\""+name+"\",\""+str(args.top_k)+"\",paste(\"seed\",rseed,sep=\"_\"),\"results\",\"log\",sep=\".\")\n\n"
     # need to collect two sets of two dimensional arrays: functions and their metrics

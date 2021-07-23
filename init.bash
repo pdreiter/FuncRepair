@@ -111,19 +111,19 @@ export DIET64PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}
 #echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang) -nostdinc \$@" > ${DIETX32PATH}/diet_clang
 #echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang++) -nostdinc \$@" > ${DIETX32PATH}/diet_clang++
 #chmod +x ${DIETX32PATH}/diet_gcc ${DIETX32PATH}/diet_g++ ${DIETX32PATH}/diet_clang ${DIETX32PATH}/diet_clang++
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which gcc) -nostdinc \$@" > ${DIET32PATH}/diet_gcc
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which gcc-8) -nostdinc \$@" > ${DIET32PATH}/diet_gcc-8
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which g++) -nostdinc \$@" > ${DIET32PATH}/diet_g++
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which g++-8) -nostdinc \$@" > ${DIET32PATH}/diet_g++-8
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang) -nostdinc \$@" > ${DIET32PATH}/diet_clang
-echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet \$(which clang++) -nostdinc \$@" > ${DIET32PATH}/diet_clang++
+[[ ! -e ${DIET32PATH}/diet_gcc ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/gcc -nostdinc \$@" > ${DIET32PATH}/diet_gcc
+[[ ! -e ${DIET32PATH}/diet_gcc-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/gcc-8 -nostdinc \$@" > ${DIET32PATH}/diet_gcc-8
+[[ ! -e ${DIET32PATH}/diet_g++ ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/g++ -nostdinc \$@" > ${DIET32PATH}/diet_g++
+[[ ! -e ${DIET32PATH}/diet_g++-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/g++-8 -nostdinc \$@" > ${DIET32PATH}/diet_g++-8
+[[ ! -e ${DIET32PATH}/diet_clang ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/clang -nostdinc \$@" > ${DIET32PATH}/diet_clang
+[[ ! -e ${DIET32PATH}/diet_clang++ ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/clang++ -nostdinc \$@" > ${DIET32PATH}/diet_clang++
 chmod +x ${DIET32PATH}/diet_gcc* ${DIET32PATH}/diet_g++* ${DIET32PATH}/diet_clang ${DIET32PATH}/diet_clang++
-echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which gcc) -nostdinc \$@" > ${DIET64PATH}/diet_gcc
-echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which gcc-8) -nostdinc \$@" > ${DIET64PATH}/diet_gcc-8
-echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which g++) -nostdinc \$@" > ${DIET64PATH}/diet_g++
-echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which g++-8) -nostdinc \$@" > ${DIET64PATH}/diet_g++-8
-echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which clang) -nostdinc \$@" > ${DIET64PATH}/diet_clang
-echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet \$(which clang++) -nostdinc \$@" > ${DIET64PATH}/diet_clang++
+[[ ! -e ${DIET64PATH}/diet_gcc ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/gcc -nostdinc \$@" > ${DIET64PATH}/diet_gcc
+[[ ! -e ${DIET64PATH}/diet_gcc-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/gcc-8 -nostdinc \$@" > ${DIET64PATH}/diet_gcc-8
+[[ ! -e ${DIET64PATH}/diet_g++ ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/g++ -nostdinc \$@" > ${DIET64PATH}/diet_g++
+[[ ! -e ${DIET64PATH}/diet_g++-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/g++-8 -nostdinc \$@" > ${DIET64PATH}/diet_g++-8
+[[ ! -e ${DIET64PATH}/diet_clang ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/clang -nostdinc \$@" > ${DIET64PATH}/diet_clang
+[[ ! -e ${DIET64PATH}/diet_clang++ ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/clang++ -nostdinc \$@" > ${DIET64PATH}/diet_clang++
 chmod +x ${DIET64PATH}/diet_gcc* ${DIET64PATH}/diet_g++* ${DIET64PATH}/diet_clang ${DIET64PATH}/diet_clang++
 
 export FUNC_REPAIR_STDLIB=$(realpath stdlibc-src)

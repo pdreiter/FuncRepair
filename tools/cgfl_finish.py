@@ -14,7 +14,9 @@ class cgfl:
         self.cg_annotate="callgrind_annotate --include={} --threshold=100 {}/{}.cg.out"
         self.raw_data=dict()
         self.screened_data=dict()
+        # list of tuples of (demangled function name, mangled name)
         self.valid_funcs=list(valid_funcs)
+        self.demangled_funcs=self.get_demangled(valid_funcs)
         #for i in valid_funcs:
         #    print(f" - '{i}'")
         import glob
@@ -43,8 +45,14 @@ class cgfl:
         for test,cg_out in self.test_files.items():
             self.run_cg_annotate(test,cg_out)
 
+    def get_demangled(self,l):
+        return [ x if '(' not in x else x.split('(',1)[0] \
+                                for x in [v[0] for v in self.valid_funcs] \
+                             ]
+
     def set_valid_funcs(self,valid_list):
         self.valid_funcs=valid_list
+        self.demangled_funcs=self.get_demangled(valid_list)
 
     def run_cg_annotate(self,test,test_cgout):
         import shlex, subprocess
@@ -73,7 +81,8 @@ class cgfl:
                 val=int(re.sub(',','',fn.group(1)))
                 func=fn.group(3)
                 rawhash[func]=val
-                if self.valid_funcs and func in self.valid_funcs:
+                # let's check the callgrind output based on demangled name
+                if self.demangled_funcs and func in self.demangled_funcs:
                     filteredhash[func]=val
 
         self.raw_data[test]=rawhash
@@ -180,6 +189,8 @@ if __name__ == "__main__":
         #def __init__(self,cb=None,src=None,inputdir=None,outputdir=None):
         parser=argparse.ArgumentParser(description=\
             "extract information from cgfl")
+        parser.add_argument('--r-seed',dest='r_seed',action='store',default=None, 
+            help='seed for Rscript')
         parser.add_argument('--top-k-percent',dest='top_k',action='store',default=None, 
             help='Percentage for Top-k results')
         parser.add_argument('--r-out',dest='r_out',action='store',default=None, 
@@ -218,20 +229,15 @@ if __name__ == "__main__":
     cb=os.path.basename(args.exe)
     get_syms_cmd="{} --exe {} --json-out {} {}"
     satisfied=None
+    from prdtools import elf
     if args.lib:
         import subprocess,shlex
-        
-        syms_lib=get_syms_cmd.format("{}/screen_small_functions.py".format(scriptdir),
-                                 args.lib, "lib.json", 
-                                 "--no-sym-info"
-                                    )
-        print("[ RUNNING ] Obtaining library symbols [screen out]:")
-        print(syms_lib)
-        cmd=shlex.split(syms_lib)
-        proc=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        sout,serr=proc.communicate()
-        output=sout.decode('utf-8').rstrip()
-        _libfunctions=output.split('\n')
+        libelf=elf.elf_file(binary_path=args.lib,symbol_info=False,debug=False)
+        libelf.dump_json("lib.json")
+        lsyms=libelf.local_symbols
+        mangled=[x[0] for x in lsyms]
+        demangled=[x[1] for x in lsyms]
+        _libfunctions=mangled
         #print("[DEBUG] output => {}".format(output))
         screen_me='|'.join(_libfunctions)
         #print("[DEBUG] screen_me => {}".format(screen_me))
@@ -242,32 +248,40 @@ if __name__ == "__main__":
     exclude_re=re.compile(r'\b('+exclude_me+r')\b')
     if args.exe:
         import subprocess,shlex
-        and_min="" if not args.min_AND else "--AND-min"
-        if args.min_inst:
-            and_min+=f" --instr-min {args.min_inst} "
-        syms_exe=get_syms_cmd.format("{}/screen_small_functions.py".format(scriptdir),
-                                 args.exe, args.json, 
-                                 " --byte-min {} {}".format(args.min_bytes,and_min)
-                                    )
-        print("[ RUNNING ] Obtaining executable symbols [needed]:")
-        print(syms_exe)
-        cmd=shlex.split(syms_exe)
-        proc=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        sout,serr=proc.communicate()
-        output=sout.decode('utf-8')
-        _functions=output.split('\n')
-        for f in _functions:
-            y=exclude_re.search(f)
+        binelf=elf.elf_file(binary_path=args.exe,symbol_info=True,debug=False)
+        print(f"Minimum bytes: {args.min_bytes}")
+        minset=elf.get_min_set(binelf,min_inst=args.min_inst,min_bytes=args.min_bytes,min_AND=args.min_AND)
+        #and_min="" if not args.min_AND else "--AND-min"
+        #if args.min_inst:
+        #    and_min+=f" --instr-min {args.min_inst} "
+        #syms_exe=get_syms_cmd.format("{}/screen_small_functions.py".format(scriptdir),
+        #                         args.exe, args.json, 
+        #                         " --byte-min {} {}".format(args.min_bytes,and_min)
+        #                            )
+        #print("[ RUNNING ] Obtaining executable symbols [needed]:")
+        #print(syms_exe)
+        #cmd=shlex.split(syms_exe)
+        #proc=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        #sout,serr=proc.communicate()
+        #output=sout.decode('utf-8')
+        #_functions=output.split('\n')
+        output="Satisfying symbols:"
+        _functions=minset
+        for sym,demangled in _functions:
+            y=exclude_re.search(demangled)
             if not y:
                 if not satisfied:
                     satisfied=list()
-                xf=f.split("(",1)[0]
+                xf=demangled.split("(",1)[0]
                 xf=re.sub("^\s*const\s*","",xf)
-                satisfied.append(xf)
-        output=serr.decode('utf-8')
+                satisfied.append((xf,sym))
+                output+=f"- {sym}"+"\n"
+        #output=serr.decode('utf-8')
         import sys
         print(output,file=sys.stderr)
-    print("These functions satisfy: ({})".format(" ".join(satisfied)))
+
+    ssat=",\n".join([f"{s[0]} [s{1}]" for s in satisfied])
+    print(f"These functions satisfy: {ssat}")
     cgfl_o = cgfl(cb=cb,src=args.src,inputdir=args.results,outputdir=args.results,valid_funcs=satisfied)
     cgfl_o.annotate()
     cgfl_o.screen_dicts(exclude_me)
@@ -277,13 +291,14 @@ if __name__ == "__main__":
     #$script_dir/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K  > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
     if args.results and args.r_out and args.top_k:
         exe_dir=os.path.dirname(args.exe)
-        calc_exe="{} --ext '.dict' --in {} --out {} --all_rank --pickle --standardize --print --r_input --r-out {} --cb {} --top-k-percent {} --debug --log {}".format(
+        calc_exe="{} --ext '.dict' --in {} --out {} --all_rank --pickle --standardize --print --r_input --r-out {} --cb {} --top-k-percent {} --debug {} --log {}".format(
         "{}/calc_susp_pp.py".format(scriptdir),
         args.results,
         exe_dir,
         args.r_out,
         cb,
         args.top_k,
+		f" --r-seed {args.r_seed} " if args.r_seed else "",
         "{}/susp-fn.log".format(exe_dir)
         )
         print("[ RUNNING ] Generating R scripts from input:")

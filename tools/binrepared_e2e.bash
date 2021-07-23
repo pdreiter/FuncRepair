@@ -4,7 +4,8 @@ cb=$1
 mydestdir=$2
 echo "DESTINATION $mydestdir"
 MYBYTES=$3
-MYINSTR=$4
+SEED=$4
+#MYINSTR=$5
 
 
 # 0 : setup
@@ -14,7 +15,8 @@ MYINSTR=$4
 # 4 : PERFORMANCE
 # 5 : APR
 #EXECUTE=( 1 1 1 1 1 1 )
-EXECUTE=( 1 1 1 1 0 1 )
+#EXECUTE=( 1 1 1 1 0 1 )
+EXECUTE=( 1 1 0 0 0 0 )
 RESET=( 0 0 0 0 0 0 )
 
 BASE_DIR=$CGC_CB_DIR
@@ -203,8 +205,11 @@ if (( ${EXECUTE[1]} == 1 )); then
         #  --pickle --standardize --print --r_input --r-out $r_out \
         #  --cb $cb --top-k-percent $TOP_K_PERCENT > $processed_out/$cb.calc_susp_pp.log 2> $processed_out/$cb.rscript.log
         instr=""
+        if [[ ! -z $SEED ]]; then
+             instr+=" --r-seed $SEED "
+        fi
         if [[ ! -z $MIN_INSTRS_FN ]]; then
-             instr=" --instr-min $MIN_INSTRS_FN"
+             instr+=" --instr-min $MIN_INSTRS_FN"
         fi
         echo "$TOOL_DIR/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/build/include/libcgc.so \
@@ -299,7 +304,7 @@ if (( ${EXECUTE[2]} == 1 )); then
             [[ ! -e libhook.so ]] && echo "decompilation [Recompilation] $f : FAILED" >> $status_log && popd > /dev/null &&  continue
             x=$(egrep -c 'Error\! Unbound functions\!' make.decomp_hook.log)
             (( $x>0 )) && echo "decompilation [Recompilation Symbol Binding] $f : FAILED" >> $status_log && popd > /dev/null &&  continue
-            $BASE_DIR/genprog_ida/create_asm_multidetour.py --json-in prd_info.json --file-to-objdump libhook.so --source ${cb}_recomp.c
+            $TOOL_DIR/create_asm_multidetour.py --json-in prd_info.json --file-to-objdump libhook.so --source ${cb}_recomp.c
             diff --brief ${cb}_recomp.c ${cb}_recomp.c.orig &> /dev/null ; diff_ret=$?
             (( $?!=0 )) && echo "decompilation [Inline ASM Insertion] $f : FAIL" >> $status_log && exit -1
             [[ -e $cb.trampoline.bin ]] && rm $cb.trampoline.bin

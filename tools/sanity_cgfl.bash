@@ -30,6 +30,7 @@ results_dir="$outdir/cgfl_results"
 r_dir="$outdir/r"
 MIN_BYTES=50
 MIN_INSTRS=
+NM_CMD="/usr/bin/nm"
 
 help_msg(){
    echo -e "Usage[1]: $0 <executable> [-regression] [-num_runs=<num>] [--results=<results dir>] [--profile-out=<profile_dir>] [--r-out=<Rscript dir] [--top-k-percent=<decimal percentage>]"
@@ -117,7 +118,6 @@ generate_all_dict(){
 
 get_locals(){
    local EXE=$1
-   #func_list=$(/usr/bin/nm  $EXE | egrep -w '[tT]' | egrep -v '(__libc_csu|__x86.get_pc_thunk|\.L|__do_global|_init|_fini|_start|register_tm_clones)' | awk '{print $NF}' | sort -u) 
    #func_re=$(echo $func_list | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
    init_re='__frame_dummy_init_array_entry|_init|__init_array_end|__init_array_start|__libc_csu_init|mutex_init'
    fini_re='__do_global_dtors_aux_fini_array_entry|_fini|__libc_csu_fini'
@@ -134,13 +134,10 @@ get_locals(){
    echo "minscreen_re=$minscreen_re"
 
    specific_issue_re='((cgc__?)(gb_new|gb_reset))'
-#   globals_re='cgc_free|cgc_malloc|cgc_calloc|cgc_realloc|cgc_free|malloc_huge|cgc_ftoa|cgc_allocate_new_blk|allocate_new_blk|cgc_small_free|free_huge|cgc_memcmp|cgc_memchr|cgc_sprintf|cgc_snprintf|cgc_vsnprintf|cgc_vsprintf|cgc_large_alloc|cgc_large_free|cgc_memcpy|cgc_putc|cgc_vprintf|cgc__vsfprintf|cgc_printf|allocate_new_blk|cgc_memset|cgc_write|cgc_recv|cgc_tiny_alloc|small_alloc|small_free|small_unlink_free|cgc_tiny_alloc|cgc_malloc_alloc|cgc_chunk_to_ptr|malloc_free|cgc_fread|cgc__malloc|cgc_ssmalloc|cgc_fflush|cgc_freaduntil|cgc_fdprintf|cgc_recvline|cgc_fwrite|cgc_memmove|cgc_coalesce|cgc_atoi|cgc_strcmp|cgc_strncmp|cgc_strchr|cgc_strnchr|cgc_gb_new|cgc_gb_reset|cgc_strcat|cgc_bzero|cgc_itoa|cgc_atoi|cgc_strn?cpy|cgc__getc|cgc_vfprintf|cgc_strtol|cgc_strn?len|cgc_strsep|cgc_exit|cgc_is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|cgc_to(ascii|lower|upper)'
-   libfunc_re=$(/usr/bin/nm --demangle $CGC_CB_DIR/build32/include/libcgc.so | /bin/egrep -w '[tT]' | awk '{print $NF}' |  sort -u | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e"s/$/$globals_re|$init_re|$fini_re|$thunk_re|$reg_re|$glob_re|$start_re|$alloc_re|$L_re|$specific_issue_re/")
-   echo "func_re=\$(/usr/bin/nm --demangle $EXE | /bin/egrep -w '[tT]' | egrep -w \"($minscreen_re)\" | egrep -vw \"($libfunc_re)\" | awk '{print \$NF}' | sort -u | perl -p -e'chomp(\$_);s/$/|/g;' | perl -p -e's/\\|\$//')"
-   #func_re=$(/usr/bin/nm  $EXE | /bin/egrep -w '[tT]' | /bin/egrep -vw "($init_re|$fini_re|$thunk_re|$reg_re|$glob_re|$start_re|$alloc_re|$L_re|$libfunc_re)" | awk '{print $NF}' | sort -u | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
-   func_re=$(/usr/bin/nm --demangle $EXE | /bin/egrep -w '[tT]' | /bin/egrep -w "($minscreen_re)" | /bin/egrep -vw "($libfunc_re)" | awk '{print $NF}' | sort -u | perl -p -e'chomp($_);s/\(.*//g;s/$/|/g;' | perl -p -e's/\|$//')
+   libfunc_re=$($NM_CMD $CGC_CB_DIR/build32/include/libcgc.so | /bin/egrep -w '[tT]' | awk '{print $NF}' |  sort -u | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e"s/$/$globals_re|$init_re|$fini_re|$thunk_re|$reg_re|$glob_re|$start_re|$alloc_re|$L_re|$specific_issue_re/")
+   echo "func_re=\$($NM_CMD $EXE | /bin/egrep -w '[tT]' | egrep -w \"($minscreen_re)\" | egrep -vw \"($libfunc_re)\" | awk '{print \$NF}' | sort -u | perl -p -e'chomp(\$_);s/$/|/g;' | perl -p -e's/\\|\$//')"
+   func_re=$($NM_CMD --demangle $EXE | /bin/egrep -w '[tT]' | /bin/egrep -w "($minscreen_re)" | /bin/egrep -vw "($libfunc_re)" | awk '{print $NF}' | sort -u | perl -p -e'chomp($_);s/\(.*//g;s/$/|/g;' | perl -p -e's/\|$//')
    echo "FUNC_RE='$func_re'"
-   #func_re=$(/usr/bin/nm  $EXE | egrep -w '[tT]' | egrep -v '(__libc_csu|__x86.get_pc_thunk|\.L|__do_global|_init|_fini|_start|register_tm_clones)' | awk '{print $NF}' | sort -u | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
    return $?
 }
 
@@ -277,12 +274,12 @@ run_reg() {
       echo "WARNING!!!! No available tests! [pos: $pos] [neg: $neg]"
       return $ret
    fi
-   for TEST in ${TESTLIST[*]}; do 
-      cg_annotate $EXE $log_dir $TEST $FUNC_RE $LIBFUNC_RE
-   done
-   generate_all_dict $log_dir
-   echo "$script_dir/calc_susp_pp.py --ext \".dict\" --in \"$log_dir\" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log  2> $log_dir/$EXE.rscript.log" >> $log_dir/cgfl.bash
-   $script_dir/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
+   #for TEST in ${TESTLIST[*]}; do 
+   #   cg_annotate $EXE $log_dir $TEST $FUNC_RE $LIBFUNC_RE
+   #done
+   #generate_all_dict $log_dir
+   #echo "$script_dir/calc_susp_pp.py --ext \".dict\" --in \"$log_dir\" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log  2> $log_dir/$EXE.rscript.log" >> $log_dir/cgfl.bash
+   #$script_dir/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
    return $ret
 }
 
