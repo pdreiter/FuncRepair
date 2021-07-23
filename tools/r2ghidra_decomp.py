@@ -88,7 +88,7 @@ def get_mangledsym_lut(r2):
         
     return mangLUT,rsym2demang
 
-def translate_r2ghidra(symlut,d_in):
+def translate_r2ghidra(symlut,d_in,enable_prd=False):
     k="|".join(list(symlut.keys()))
     syms_re=re.compile(r"\b("+k+r")\b")
     lines=d_in.split('\n')
@@ -106,6 +106,8 @@ def translate_r2ghidra(symlut,d_in):
             demsym=symlut[replaceme]['name']
             demang=demsym.split('(',1)[0]
             l=re.sub(r"\b"+replaceme+r"\b",demang,l)
+        if enable_prd:
+            l=re.sub(r"::","__",l)
         updated.append(l)
     return "\n".join(updated)
     pass
@@ -160,6 +162,8 @@ if __name__ == "__main__":
                         type=str, required=True)
     parser.add_argument("-p","--prog",dest="prog",help="Binary program to analyze",
                         type=str, required=True)
+    parser.add_argument("--prd",dest="prd",help="prepare decompiled output for PRD",
+                        action='store_const',const=True,default=False)
     parser.add_argument("--debug",dest="debug",help="strip the binary before using",
                         action='store_const',const=True,default=False)
     parser.add_argument("--no-strip",dest="strip",help="Don't strip the binary before using",
@@ -189,7 +193,7 @@ if __name__ == "__main__":
         with open(args.out+".tmp","w") as f:
             f.write(d_out)
             f.close()
-    d_out=translate_r2ghidra(rsym_to_demangled,d_out)
+    d_out=translate_r2ghidra(rsym_to_demangled,d_out,args.prd)
     with open(args.out,"w") as f:
         f.write(d_out)
         f.close()
