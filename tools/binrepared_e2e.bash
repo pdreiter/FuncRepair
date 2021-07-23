@@ -235,7 +235,7 @@ if (( ${EXECUTE[1]} == 1 )); then
         mkdir -p $ranked_out
         pushd $ranked_out > /dev/null
         $r_out/$cb.r |& tee $cb.cgfl.log
-        cat $cb.$TOP_K_PERCENT.seed_.results.log | sed 's/ /:/g' > $cb.top_rank.list
+        cat $cb.$TOP_K_PERCENT.seed_${SEED}.results.log | sed 's/ /:/g' > $cb.top_rank.list
         fsize=$(file $cb.top_rank.list | awk '{print $NF}') 
         popd > /dev/null
     fi

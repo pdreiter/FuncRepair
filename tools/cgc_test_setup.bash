@@ -200,7 +200,7 @@ build_cgctest(){
                                 pushd ${chal_build} > /dev/null
                                 echo -n "$x"
                                 pass=0
-                                id=$CGC_CB_DIR/pkl/$CHAL/p$num_pos_x
+                                id=$CGC_CB_DIR/$pkldir/$CHAL/p$num_pos_x
                                 if  [[ $DEBUG -ne 1 ]]; then
                                 scriptout=$($GTOOLDIR/cb-replay.py --cbs $CHAL --timeout 5 --negotiate $polldir/${prefix}_${x}.xml --id $id > /dev/null)
                                 pass=$?
@@ -307,8 +307,8 @@ link_dirs(){
     GBUILD="${CGCTEST_DIR}/${CHAL}"
     LBUILD="${BUILD_DIR}/challenges/${CHAL}"
 
-    for i in $CHAL ${CHAL}_patched poller pkl; do
-        ln -sf $(realpath $LBUILD/$i) $dest/
+    for i in $CHAL ${CHAL}_patched poller $pkldir; do
+        [[ -e $LBUILD/$i ]] && ln -sf $(realpath $LBUILD/$i) $dest/
     done
     for i in $(ls $LBUILD/pov*.pov) ; do
         ln -sf $(realpath $i) $dest/

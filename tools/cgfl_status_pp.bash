@@ -1,6 +1,7 @@
 #!/bin/bash
 destdir=$1
 cb=$2
+seed=$3
 
 for i in $cb; do 
 	if [[ ! -e $destdir/build/$i ]]; then
@@ -14,7 +15,7 @@ for i in $cb; do
 	   echo -e "\n$i : no cgfl data"; continue; 
 	fi; 
 	missing=0;cnt=0; missing_fns=""; 
-    rank_size=$(wc -w $destdir/cgfl/cgfl_rank/$i/$i.*seed_.results.log | head -n 1 | awk '{print $1}')
+    rank_size=$(wc -w $destdir/cgfl/cgfl_rank/$i/$i.*seed_$seed.results.log | head -n 1 | awk '{print $1}')
 	for j in $(cat patched_functions/${i}_info | perl -p -e's/^[^:]+: */ /;s/\n$//' | perl -p -e's/$/\n/;s/(\sstruct|struct\s)//g'); do 
        susp_file=$destdir/build/$i/susp-fn.log
        [[ ! -e $susp_file ]] && susp_file=$destdir/build/$i/susp-default.std.log
