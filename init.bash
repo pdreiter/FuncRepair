@@ -11,6 +11,7 @@ export R_LIBS=$(realpath .)/R_PACKAGES/pkgs
 export PROPHET64_BASE=$(realpath .)/PROPHET/prophet-gpl
 UPDATE=$1
 
+
 if [[ ! -z $UPDATE ]]; then 
     git submodule update --init 
     
@@ -86,6 +87,41 @@ if [[ ! -d "${libinstall_dir}/glibc-${glibc_ver}" ]]; then
     popd 
 fi 
 
+# issues popped up during testing with r2ghidra - difficult to get stuff done with old version of ghidra it used
+#r2_installed=$(r2 -v | egrep -c 'radare2')
+#if (( $r2_installed>0 )); then
+   #if [[ ! -e radare2 ]]; then 
+   ## tested on git-5.4.1
+   #git clone https://github.com/radare/radare2;
+   #fi
+   #pushd radare2; sys/install.sh; popd
+   ##if [[ ! -e radare2-4.3.1 ]]; then 
+   ##    wget https://github.com/radare/radare2/archive/4.3.1.tar.gz
+   ##    tar xzvf 4.3.1.tar.gz
+   ##    pushd radare2-4.3.1 
+   ##        ./configure --prefix=/usr
+   ##        make -j8
+   ##        sudo make install
+   ##        r2pm init
+   ##    popd
+   ##else
+   ##    pushd radare2-4.3.1
+   ##        sys/install.sh || sys/user.sh
+   ##    popd
+   ##fi
+   ##using version r2ghidra version 5.4.0
+   #r2pm update
+   #r2pm install r2ghidra
+   #r2pm install r2ghidra-dec
+   #r2pm -ci r2ghidra
+#fi
+
+  if [[ ! -e "ghidra_10.0.1_PUBLIC_20210708" ]]; then
+      wget -c https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.0.1_build/ghidra_10.0.1_PUBLIC_20210708.zip
+      unzip ghidra_10.0.1_PUBLIC_20210708.zip
+  fi
+export GHIDRA_TOOL_DIR=$(realpath ./ghidra_10.0.1_PUBLIC_20210708)
+export GHIDRA_HEADLESS="${GHIDRA_TOOL_DIR}/support/analyzeHeadless"
 
 if [[ ! -d "${libinstall_dir}/dietlibc" ]]; then
    mkdir -p ${libinstall_dir}/dietlibc
@@ -111,20 +147,22 @@ export DIET64PATH=$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}
 #echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang) -nostdinc \$@" > ${DIETX32PATH}/diet_clang
 #echo -e "#!/usr/bin/env bash\n$DIETX32PATH/diet \$(which clang++) -nostdinc \$@" > ${DIETX32PATH}/diet_clang++
 #chmod +x ${DIETX32PATH}/diet_gcc ${DIETX32PATH}/diet_g++ ${DIETX32PATH}/diet_clang ${DIETX32PATH}/diet_clang++
-[[ ! -e ${DIET32PATH}/diet_gcc ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/gcc -nostdinc \$@" > ${DIET32PATH}/diet_gcc
-[[ ! -e ${DIET32PATH}/diet_gcc-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/gcc-8 -nostdinc \$@" > ${DIET32PATH}/diet_gcc-8
-[[ ! -e ${DIET32PATH}/diet_g++ ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/g++ -nostdinc \$@" > ${DIET32PATH}/diet_g++
-[[ ! -e ${DIET32PATH}/diet_g++-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/g++-8 -nostdinc \$@" > ${DIET32PATH}/diet_g++-8
-[[ ! -e ${DIET32PATH}/diet_clang ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/clang -nostdinc \$@" > ${DIET32PATH}/diet_clang
-[[ ! -e ${DIET32PATH}/diet_clang++ ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/clang++ -nostdinc \$@" > ${DIET32PATH}/diet_clang++
+[[ ! -e ${DIET32PATH}/diet_gcc ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/gcc -nostdinc \$@ " > ${DIET32PATH}/diet_gcc
+[[ ! -e ${DIET32PATH}/diet_gcc-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/gcc-8 -nostdinc \$@ " > ${DIET32PATH}/diet_gcc-8
+[[ ! -e ${DIET32PATH}/diet_g++ ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/g++ -fpermissive -nostdlib -nostdinc \$@ -I$DIET32PATH/../include" > ${DIET32PATH}/diet_g++
+[[ ! -e ${DIET32PATH}/diet_g++-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/g++-8 -fpermissive -nostdlib -nostdinc \$@ -I$DIET32PATH/../include" > ${DIET32PATH}/diet_g++-8
+[[ ! -e ${DIET32PATH}/diet_clang ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/clang -nostdinc \$@ " > ${DIET32PATH}/diet_clang
+[[ ! -e ${DIET32PATH}/diet_clang++ ]] && echo -e "#!/usr/bin/env bash\n$DIET32PATH/diet /usr/bin/clang++ -fpermissive -nostdlib -nostdinc \$@ -I$DIET32PATH/../include" > ${DIET32PATH}/diet_clang++
 chmod +x ${DIET32PATH}/diet_gcc* ${DIET32PATH}/diet_g++* ${DIET32PATH}/diet_clang ${DIET32PATH}/diet_clang++
-[[ ! -e ${DIET64PATH}/diet_gcc ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/gcc -nostdinc \$@" > ${DIET64PATH}/diet_gcc
-[[ ! -e ${DIET64PATH}/diet_gcc-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/gcc-8 -nostdinc \$@" > ${DIET64PATH}/diet_gcc-8
-[[ ! -e ${DIET64PATH}/diet_g++ ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/g++ -nostdinc \$@" > ${DIET64PATH}/diet_g++
-[[ ! -e ${DIET64PATH}/diet_g++-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/g++-8 -nostdinc \$@" > ${DIET64PATH}/diet_g++-8
-[[ ! -e ${DIET64PATH}/diet_clang ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/clang -nostdinc \$@" > ${DIET64PATH}/diet_clang
-[[ ! -e ${DIET64PATH}/diet_clang++ ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/clang++ -nostdinc \$@" > ${DIET64PATH}/diet_clang++
+if [[ ! -z $ENABLED_64 ]] ; then
+[[ ! -e ${DIET64PATH}/diet_gcc ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/gcc -nostdinc \$@ -I$DIET64PATH/../include" > ${DIET64PATH}/diet_gcc
+[[ ! -e ${DIET64PATH}/diet_gcc-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/gcc-8 -nostdinc \$@ -I$DIET64PATH/../include" > ${DIET64PATH}/diet_gcc-8
+[[ ! -e ${DIET64PATH}/diet_g++ ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/g++ -nostdinc \$@ -I$DIET64PATH/../include" > ${DIET64PATH}/diet_g++
+[[ ! -e ${DIET64PATH}/diet_g++-8 ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/g++-8 -nostdinc \$@ -I$DIET64PATH/../include" > ${DIET64PATH}/diet_g++-8
+[[ ! -e ${DIET64PATH}/diet_clang ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/clang -nostdinc \$@ -I$DIET64PATH/../include" > ${DIET64PATH}/diet_clang
+[[ ! -e ${DIET64PATH}/diet_clang++ ]] && echo -e "#!/usr/bin/env bash\n$DIET64PATH/diet /usr/bin/clang++ -nostdinc \$@ -I$DIET64PATH/../include" > ${DIET64PATH}/diet_clang++
 chmod +x ${DIET64PATH}/diet_gcc* ${DIET64PATH}/diet_g++* ${DIET64PATH}/diet_clang ${DIET64PATH}/diet_clang++
+fi
 
 export FUNC_REPAIR_STDLIB=$(realpath stdlibc-src)
 export PATH=$PATH:$(realpath ${libinstall_dir}/dietlibc/dietlibc-${dietlibc_ver}/bin-x86_64)
@@ -141,26 +179,6 @@ export CGC_BASE_DIR=${PRD_BASE_DIR}/cgc
 
 # Construct pdreiter's version of CGC environment
 pushd ${CGC_BASE_DIR}
-
-# the following are no longer needed because going with cb-multios
-#[[ ! -d "${CGC_BASE_DIR}/samples" ]] && \
-#git clone https://github.com/pdreiter/samples.git
-#[[ ! -d "${CGC_BASE_DIR}/cgc2elf" ]] && \
-#  git clone https://github.com/pdreiter/cgc2elf.git
-#[[ ! -d "${CGC_BASE_DIR}/cb-testing" ]] && \
-#  git clone https://github.com/pdreiter/cb-testing.git
-#[[ ! -d "${CGC_BASE_DIR}/libcgc" ]] && \
-#  git clone https://github.com/pdreiter/libcgc.git
-#[[ ! -d "${CGC_BASE_DIR}/poll-generator" ]] && \
-#  git clone https://github.com/pdreiter/poll-generator.git
-#[[ ! -d "${CGC_BASE_DIR}/cgc-release-documentation" ]] && \
-#  git clone https://github.com/pdreiter/cgc-release-documentation.git
-#[[ ! -d "${CGC_BASE_DIR}/pov-xml2c" ]] && \
-#  git clone https://github.com/pdreiter/pov-xml2c.git
-
-#[[ ! -d "${CGC_BASE_DIR}/cb-multios" ]] && \
-#  git clone https://github.com/pdreiter/cb-multios-prd.git cb-multios && \
-#  pushd cb-multios && git checkout genprog_afr_prd && popd
 
 export CGC_CB_DIR=${CGC_BASE_DIR}/cb-multios
 

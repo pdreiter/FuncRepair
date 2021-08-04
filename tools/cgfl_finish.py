@@ -121,14 +121,17 @@ class cgfl:
 
     def screen_dicts(self,exclude):
         screen_="({})".format(exclude)
-        screen_re=re.compile(screen_)
+        screen_re=re.compile(r"\b"+screen_+r"\b")
         import copy
         orig_s=copy.deepcopy(self.screened_data)
+        screened=list()
         for y in orig_s.keys():
             for x in orig_s[y].keys():
                 screenme=screen_re.search(x)
                 if screenme:
+                    screened.append(screenme.group(1))
                     del self.screened_data[y][x]
+        return screened
 
     def keep_dicts(self,keep):
         keep_="({})".format(keep)
@@ -284,7 +287,8 @@ if __name__ == "__main__":
     print(f"These functions satisfy: {ssat}")
     cgfl_o = cgfl(cb=cb,src=args.src,inputdir=args.results,outputdir=args.results,valid_funcs=satisfied)
     cgfl_o.annotate()
-    cgfl_o.screen_dicts(exclude_me)
+    screened_out=cgfl_o.screen_dicts(exclude_me)
+    print(f"Screened out these functions {','.join(screened_out)}")
     cgfl_o.write_raw_dicts()
     cgfl_o.write_screened_dicts()
 

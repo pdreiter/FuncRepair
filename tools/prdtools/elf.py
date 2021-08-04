@@ -9,10 +9,27 @@
 #
 import subprocess,re
 
+def strip_binary(binary,out=None):
+    import subprocess
+    b_out=out
+    if not out:
+        b_out=f"{binary}.strip"
+    x=subprocess.run(f"cp {binary} {b_out}",shell=True)
+    if x.returncode!=0:
+        print(f"[WARNING!] Failed to create {b_out} from binary source.\nSkipping stripping of symbols")
+        b_out=binary
+    else:
+        x=subprocess.run(f"/usr/bin/strip --strip-all {b_out}",shell=True)
+        if x.returncode!=0:
+            print(f"[WARNING!] Failed to strip symbols from {b_out}!")
+            print(f"Reverting to original binary")
+            b_out=binary
+    return b_out
+
 
 
 class elf_file:
-    def __init__(self,binary_path=None,symbol_info=False,debug=False):
+    def __init__(self,binary_path=None,symbol_info=False,debug=False,characterize=True):
         self.bin=None
         self.exe=None
         self.syms=None
@@ -39,49 +56,66 @@ class elf_file:
             self.dprint("{:30s} {:20s} {:20s} {:20s}".format("Function","Num instrs","Num bytes","Num Calls"))
             self.dprint("{:30s} {:20s} {:20s} {:20s}".format("-"*30,"-"*20,"-"*20,"-"*20))
             self.failed_syms=list()
-            for f,dmf in self.local_symbols:
+            if characterize:
+                self.characterize_symbols()
+
+    def characterize_symbols(self):
+        for f,dmf in self.local_symbols:
+            import sys
+            print("- {}".format(f),file=sys.stderr)
+            objdump=self.obtain_fn_objdump(f)
+            if not objdump:
+                self.failed_syms.append((f,dmf))
+                continue
+            elif len(objdump)<1:
                 import sys
-                print("- {}".format(f),file=sys.stderr)
-                objdump=self.obtain_fn_objdump(f)
-                if not objdump:
-                    self.failed_syms.append((f,dmf))
-                    continue
-                elif len(objdump)<1:
-                    import sys
-                    print("ERROR: Can't find objdump for {}".format(f),file=sys.stderr)
-                    self.failed_syms.append(f)
-                    continue
-                start=re.match("^([0-9a-fA-F]{8})\s+<(.+)>",objdump[0])
-                end_re=re.compile(r"^\s*([0-9a-fA-F]{1,8}):")
-                index=len(objdump)-1
-                while (not end_re.search(objdump[index])) and index>0:
-                    index=index-1
-                end=re.match("^\s*([0-9a-fA-F]{1,8}):\s+(([0-9a-fA-F]{2} )+)",objdump[index])
-                try:
-                    start_address=int(start.group(1),16)
-                except Exception as e:
-                    import sys
-                    print(e,file=sys.stderr)
-                    print("objdump[0] = {}".format(objdump[0]),file=sys.stderr)
-                    raise
-                try:
-                    end_address=int(end.group(1),16)+len(end.group(2).rstrip().rsplit(' '))-1
-                except Exception as e:
-                    import sys
-                    print(e,file=sys.stderr)
-                    print("objdump[{}] = {}".format(index,objdump[index]),file=sys.stderr)
-                    raise
-                self.characterize[f] = { 
-                                         'demangled_name':dmf,
-                                         'num_instructions':len(objdump)-1,
-                                         'num_calls':len([x for x in objdump if "\tcall " in x]),
-                                         'num_bytes':end_address-start_address,
-                                         'offset':start_address,
-                                         #'objdump':objdump
-                                       }
-                self.dprint("{:30s} {:20s} {:20s} {:20s}".format(f,str(len(objdump)),str(self.characterize[f]['num_bytes']),str(self.characterize[f]['num_calls'])))
+                print("ERROR: Can't find objdump for {}".format(f),file=sys.stderr)
+                self.failed_syms.append(f)
+                continue
+            start=re.match("^([0-9a-fA-F]{8})\s+<(.+)>",objdump[0])
+            end_re=re.compile(r"^\s*([0-9a-fA-F]{1,8}):")
+            index=len(objdump)-1
+            while (not end_re.search(objdump[index])) and index>0:
+                index=index-1
+            end=re.match("^\s*([0-9a-fA-F]{1,8}):\s+(([0-9a-fA-F]{2} )+)",objdump[index])
+            try:
+                start_address=int(start.group(1),16)
+            except Exception as e:
+                import sys
+                print(e,file=sys.stderr)
+                print("objdump[0] = {}".format(objdump[0]),file=sys.stderr)
+                raise
+            try:
+                end_address=int(end.group(1),16)+len(end.group(2).rstrip().rsplit(' '))-1
+            except Exception as e:
+                import sys
+                print(e,file=sys.stderr)
+                print("objdump[{}] = {}".format(index,objdump[index]),file=sys.stderr)
+                raise
+            self.characterize[f] = { 
+                                     'demangled_name':dmf,
+                                     'num_instructions':len(objdump)-1,
+                                     'num_calls':len([x for x in objdump if "\tcall " in x]),
+                                     'num_bytes':end_address-start_address,
+                                     'offset':start_address,
+                                     #'objdump':objdump
+                                   }
+            self.dprint("{:30s} {:20s} {:20s} {:20s}".format(f,str(len(objdump)),str(self.characterize[f]['num_bytes']),str(self.characterize[f]['num_calls'])))
     
-    def find_symbol(self,demangled:str):
+    def is_mangled(self,mangled:str):
+        return mangled in list(self.demangled_syms_lut.keys())
+            
+    def is_demangled(self,demangled:str):
+        return demangled in list(self.mangled_syms_lut.keys())
+            
+    def get_demangled_symbol(self,mangled:str):
+        search_re=re.compile(r"\b"+f"{mangled}"+r"\b")
+        for dm in self.demangled_syms_lut.keys():
+            if search_re.match(dm):
+                return self.demangled_syms_lut[dm]
+        return None
+
+    def get_mangled_symbol(self,demangled:str):
         search_re=re.compile(r"\b"+f"{demangled}"+r"\b")
         for dm in self.mangled_syms_lut.keys():
             if search_re.match(dm):

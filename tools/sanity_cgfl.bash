@@ -30,7 +30,7 @@ results_dir="$outdir/cgfl_results"
 r_dir="$outdir/r"
 MIN_BYTES=50
 MIN_INSTRS=
-NM_CMD="/usr/bin/nm"
+#NM_CMD="/usr/bin/nm"
 
 help_msg(){
    echo -e "Usage[1]: $0 <executable> [-regression] [-num_runs=<num>] [--results=<results dir>] [--profile-out=<profile_dir>] [--r-out=<Rscript dir] [--top-k-percent=<decimal percentage>]"
@@ -92,54 +92,54 @@ done
 reg_log_subdir="$profile_outdir"
 mkdir -p $results_dir $profile_outdir $r_dir
 
-cg_annotate() {
-   local EXE=$1
-   local log_dir=$2
-   local TEST=$3
-   local FUNC_RE=$4
-   local LIBFUNC_RE=$5
-   mkdir -p $log_dir/tmp
-   echo "callgrind_annotate --include=$CGC_CB_DIR/challenges/$EXE/src --threshold=100 $log_dir/$TEST.cg.out > $log_dir/tmp/$TEST.annot;">> $log_dir/cgfl.bash
-   callgrind_annotate --include=$CGC_CB_DIR/challenges/$EXE/src --threshold=100 $log_dir/$TEST.cg.out > $log_dir/tmp/$TEST.annot;
-   echo "(echo \"{\"; perl -p -e'if (/^\\s*((\\d+,)*\\d+)\\s+\\S+(?<!:):(?!:)([^\\s\\(]+)(\\s+|\\()/){ my (\$func,\$val)=(\$3,\$1); \$val=~s/,//g; print \"\\\"\$func\\\":\$val,\\n\";} undef \$_;' $log_dir/tmp/$TEST.annot; echo \"}\") > $log_dir/tmp/$TEST.dict;" >> $log_dir/cgfl.bash 
-   (echo "{"; perl -p -e'if (/^\s*((\d+,)*\d+)\s+\S+(?<!:):(?!:)([^\s\(]+)(\s+|\()/){ my ($func,$val)=($3,$1); $val=~s/,//g; print "\"$func\":$val,\n";} undef $_;' $log_dir/tmp/$TEST.annot; echo "}") > $log_dir/tmp/$TEST.dict; 
-   #echo "cat $log_dir/tmp/$TEST.dict | egrep -w \"(\{|\}|$FUNC_RE)\" > $log_dir/$TEST.dict"
-   cat $log_dir/tmp/$TEST.dict | egrep -w "(\{|\}|$FUNC_RE)" | egrep -vw "($LIBFUNC_RE)" > $log_dir/$TEST.dict
-   echo "cat $log_dir/tmp/$TEST.dict | egrep -w \"(\\{|\\}|$FUNC_RE)\" | egrep -vw \"($LIBFUNC_RE)\" > $log_dir/$TEST.dict;" >> $log_dir/cgfl.bash
-   #cat $log_dir/tmp/$TEST.dict | egrep -w "(\{|\}|$FUNC_RE)"  > $log_dir/$TEST.dict
-   #echo "cat $log_dir/tmp/$TEST.dict | egrep -w \"(\\{|\\}|$FUNC_RE)\" > $log_dir/$TEST.dict;" >> $log_dir/cgfl.bash
-}
+#cg_annotate() {
+#   local EXE=$1
+#   local log_dir=$2
+#   local TEST=$3
+#   local FUNC_RE=$4
+#   local LIBFUNC_RE=$5
+#   mkdir -p $log_dir/tmp
+#   echo "callgrind_annotate --include=$CGC_CB_DIR/challenges/$EXE/src --threshold=100 $log_dir/$TEST.cg.out > $log_dir/tmp/$TEST.annot;">> $log_dir/cgfl.bash
+#   callgrind_annotate --include=$CGC_CB_DIR/challenges/$EXE/src --threshold=100 $log_dir/$TEST.cg.out > $log_dir/tmp/$TEST.annot;
+#   echo "(echo \"{\"; perl -p -e'if (/^\\s*((\\d+,)*\\d+)\\s+\\S+(?<!:):(?!:)([^\\s\\(]+)(\\s+|\\()/){ my (\$func,\$val)=(\$3,\$1); \$val=~s/,//g; print \"\\\"\$func\\\":\$val,\\n\";} undef \$_;' $log_dir/tmp/$TEST.annot; echo \"}\") > $log_dir/tmp/$TEST.dict;" >> $log_dir/cgfl.bash 
+#   (echo "{"; perl -p -e'if (/^\s*((\d+,)*\d+)\s+\S+(?<!:):(?!:)([^\s\(]+)(\s+|\()/){ my ($func,$val)=($3,$1); $val=~s/,//g; print "\"$func\":$val,\n";} undef $_;' $log_dir/tmp/$TEST.annot; echo "}") > $log_dir/tmp/$TEST.dict; 
+#   #echo "cat $log_dir/tmp/$TEST.dict | egrep -w \"(\{|\}|$FUNC_RE)\" > $log_dir/$TEST.dict"
+#   cat $log_dir/tmp/$TEST.dict | egrep -w "(\{|\}|$FUNC_RE)" | egrep -vw "($LIBFUNC_RE)" > $log_dir/$TEST.dict
+#   echo "cat $log_dir/tmp/$TEST.dict | egrep -w \"(\\{|\\}|$FUNC_RE)\" | egrep -vw \"($LIBFUNC_RE)\" > $log_dir/$TEST.dict;" >> $log_dir/cgfl.bash
+#   #cat $log_dir/tmp/$TEST.dict | egrep -w "(\{|\}|$FUNC_RE)"  > $log_dir/$TEST.dict
+#   #echo "cat $log_dir/tmp/$TEST.dict | egrep -w \"(\\{|\\}|$FUNC_RE)\" > $log_dir/$TEST.dict;" >> $log_dir/cgfl.bash
+#}
 
-generate_all_dict(){
-   local log_dir=$1
-   (echo "{";for i in $(cat $log_dir/*.dict | perl -p -e's#:.*##;s#[{}"]##g;if(/^$/){undef $_;}' | sort -u); do echo "\"$i\":0,"; done; echo "}") > $log_dir/all.dict
-   echo "(echo \"{\";for i in \$(cat $log_dir/*.dict | perl -p -e's#:.*##;s#[{}\"]##g;if(/^$/){undef \$_;}' | sort -u); do echo \"\\\"\$i\\\":0,\"; done; echo \"}\") > $log_dir/all.dict;" >> $log_dir/cgfl.bash
-}
+#generate_all_dict(){
+#   local log_dir=$1
+#   (echo "{";for i in $(cat $log_dir/*.dict | perl -p -e's#:.*##;s#[{}"]##g;if(/^$/){undef $_;}' | sort -u); do echo "\"$i\":0,"; done; echo "}") > $log_dir/all.dict
+#   echo "(echo \"{\";for i in \$(cat $log_dir/*.dict | perl -p -e's#:.*##;s#[{}\"]##g;if(/^$/){undef \$_;}' | sort -u); do echo \"\\\"\$i\\\":0,\"; done; echo \"}\") > $log_dir/all.dict;" >> $log_dir/cgfl.bash
+#}
 
-get_locals(){
-   local EXE=$1
-   #func_re=$(echo $func_list | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
-   init_re='__frame_dummy_init_array_entry|_init|__init_array_end|__init_array_start|__libc_csu_init|mutex_init'
-   fini_re='__do_global_dtors_aux_fini_array_entry|_fini|__libc_csu_fini'
-   thunk_re='__x86.get_pc_thunk.[abcds][ix]|__cxa_pure_virtual'
-   reg_re='deregister_tm_clones|register_tm_clones'
-   glob_re='__do_global_dtors_aux|__do_global_dtors_aux_fini_array_entry'
-   start_re='_start|__init_array_start|start'
-   alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
-   L_re='\.L[[:digit:]]+'
-   globals_re='((cgc__?)?(free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
-   instr=""
-   if [[ ! -z $MIN_INSTRS ]] ; then instr=" --instr-min $MIN_INSTRS "; fi
-   minscreen_re=$($script_dir/screen_small_functions.py --json-in info.json --byte-min $MIN_BYTES $instr |  perl -p -e'chomp($_);s/\(.*//;s/$/|/g;' | perl -p -e's/\|$//')
-   echo "minscreen_re=$minscreen_re"
-
-   specific_issue_re='((cgc__?)(gb_new|gb_reset))'
-   libfunc_re=$($NM_CMD $CGC_CB_DIR/build32/include/libcgc.so | /bin/egrep -w '[tT]' | awk '{print $NF}' |  sort -u | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e"s/$/$globals_re|$init_re|$fini_re|$thunk_re|$reg_re|$glob_re|$start_re|$alloc_re|$L_re|$specific_issue_re/")
-   echo "func_re=\$($NM_CMD $EXE | /bin/egrep -w '[tT]' | egrep -w \"($minscreen_re)\" | egrep -vw \"($libfunc_re)\" | awk '{print \$NF}' | sort -u | perl -p -e'chomp(\$_);s/$/|/g;' | perl -p -e's/\\|\$//')"
-   func_re=$($NM_CMD --demangle $EXE | /bin/egrep -w '[tT]' | /bin/egrep -w "($minscreen_re)" | /bin/egrep -vw "($libfunc_re)" | awk '{print $NF}' | sort -u | perl -p -e'chomp($_);s/\(.*//g;s/$/|/g;' | perl -p -e's/\|$//')
-   echo "FUNC_RE='$func_re'"
-   return $?
-}
+#get_locals(){
+#   local EXE=$1
+#   #func_re=$(echo $func_list | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e's/\|$//')
+#   init_re='__frame_dummy_init_array_entry|_init|__init_array_end|__init_array_start|__libc_csu_init|mutex_init'
+#   fini_re='__do_global_dtors_aux_fini_array_entry|_fini|__libc_csu_fini'
+#   thunk_re='__x86.get_pc_thunk.[abcds][ix]|__cxa_pure_virtual'
+#   reg_re='deregister_tm_clones|register_tm_clones'
+#   glob_re='__do_global_dtors_aux|__do_global_dtors_aux_fini_array_entry'
+#   start_re='_start|__init_array_start|start'
+#   alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
+#   L_re='\.L[[:digit:]]+'
+#   globals_re='((cgc__?)?(free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
+#   instr=""
+#   if [[ ! -z $MIN_INSTRS ]] ; then instr=" --instr-min $MIN_INSTRS "; fi
+#   minscreen_re=$($script_dir/screen_small_functions.py --json-in info.json --byte-min $MIN_BYTES $instr |  perl -p -e'chomp($_);s/\(.*//;s/$/|/g;' | perl -p -e's/\|$//')
+#   echo "minscreen_re=$minscreen_re"
+#
+#   specific_issue_re='((cgc__?)(gb_new|gb_reset))'
+#   libfunc_re=$($NM_CMD $CGC_CB_DIR/build32/include/libcgc.so | /bin/egrep -w '[tT]' | awk '{print $NF}' |  sort -u | perl -p -e'chomp($_);s/$/|/g;' | perl -p -e"s/$/$globals_re|$init_re|$fini_re|$thunk_re|$reg_re|$glob_re|$start_re|$alloc_re|$L_re|$specific_issue_re/")
+#   echo "func_re=\$($NM_CMD $EXE | /bin/egrep -w '[tT]' | egrep -w \"($minscreen_re)\" | egrep -vw \"($libfunc_re)\" | awk '{print \$NF}' | sort -u | perl -p -e'chomp(\$_);s/$/|/g;' | perl -p -e's/\\|\$//')"
+#   func_re=$($NM_CMD --demangle $EXE | /bin/egrep -w '[tT]' | /bin/egrep -w "($minscreen_re)" | /bin/egrep -vw "($libfunc_re)" | awk '{print $NF}' | sort -u | perl -p -e'chomp($_);s/\(.*//g;s/$/|/g;' | perl -p -e's/\|$//')
+#   echo "FUNC_RE='$func_re'"
+#   return $?
+#}
 
 
 run_reg() {
@@ -149,9 +149,9 @@ run_reg() {
    local num_runs=$3
    echo "Regression: $EXE"
    echo "CGFL Top Rank: $TOP_K"
-   get_locals $EXE
-   local FUNC_RE=$func_re
-   local LIBFUNC_RE=$libfunc_re
+   #get_locals $EXE
+   #local FUNC_RE=$func_re
+   #local LIBFUNC_RE=$libfunc_re
 
    TESTLIST=()
    log_dir=$results_dir
@@ -351,9 +351,9 @@ fi
 DEBUG=$4;
 j=0;
 
-get_locals $EXE
-local FUNC_RE=$func_re
-local LIBFUNC_RE=$libfunc_re
+#get_locals $EXE
+#local FUNC_RE=$func_re
+#local LIBFUNC_RE=$libfunc_re
 
 log_dir=$results_dir
 mkdir -p $log_dir
@@ -384,6 +384,6 @@ cp $reg_log_subdir/$TEST.cgfl.log $log_dir/$TEST.cg.log
 cp $reg_log_subdir/$TEST.cgfl.out $log_dir/$TEST.cg.out
 done;
 echo "# of failed $TEST tests $j of $i"
-cg_annotate $EXE $log_dir $TEST $FUNC_RE $LIBFUNC_RE
-generate_all_dict $log_dir
+#cg_annotate $EXE $log_dir $TEST $FUNC_RE $LIBFUNC_RE
+#generate_all_dict $log_dir
 fi

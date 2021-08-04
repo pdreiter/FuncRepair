@@ -16,7 +16,7 @@ SEED=$4
 # 5 : APR
 #EXECUTE=( 1 1 1 1 1 1 )
 #EXECUTE=( 1 1 1 1 0 1 )
-EXECUTE=( 1 1 0 0 0 0 )
+EXECUTE=( 1 1 1 1 0 1 )
 RESET=( 0 0 0 0 0 0 )
 
 BASE_DIR=$CGC_CB_DIR
@@ -33,9 +33,12 @@ MYCPP=g++-8
 #TOP_K_PERCENT=0.25
 TOP_K_PERCENT=0.35
 # (52 - 3) / 7 = 7 stack pushes
-MIN_BYTES_FN=52
-[[ ! -z $MYBYTES ]] && (( $MYBYTES>$MIN_BYTES_FN )) && MIN_BYTES_FN=$MYBYTES
-MIN_INSTRS_FN=$MYINSTR
+MIN_BYTES_FN=$MYBYTES;
+if [[ -z $MYBYTES ]] ; then 
+   MIN_BYTES_FN=52
+fi
+MIN_INSTRS_FN=
+
 
 # BinREPARED destination variables
 if [[ -z $mydestdir ]]; then
@@ -244,7 +247,7 @@ if (( ${EXECUTE[1]} == 1 )); then
     else
     fsize=$(file $ranked_out/$cb.top_rank.list | awk '{print $NF}') 
     fi
-    $TOOL_DIR/cgfl_status_pp.bash $destdir $cb
+    $TOOL_DIR/cgfl_status_pp.bash $destdir $cb $SEED
     if [[ -e $ranked_out/$cb.top_rank.list && $fsize != "empty" ]] ; then 
         echo "cgfl top rank : SUCCESS" >> $status_log ; 
     else 
@@ -280,11 +283,13 @@ if (( ${EXECUTE[2]} == 1 )); then
             din="$decomp_test/in"
             dout="$decomp_test/out.$i"
             mkdir -p $din $dout
-            echo -n "$cb,$cb_build/$cb,$f" > $din/$cb.$i.target_list
-            python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
-            $din/$cb.$i.target_list --ouput_directory $dout \
-            --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $dout/multidecomp.log
-            echo "====DONE====" >> $dout/multidecomp.log
+            $TOOL_DIR/decompile.py -p $cb_build/$cb --target-list $din/$cb.$i.target_list \
+            -l $dout/multidecomp.log -o $dout -s $DECOMP_TOOL_DIR -f $f
+            #echo -n "$cb,$cb_build/$cb,$f" > $din/$cb.$i.target_list
+            #python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
+            #$din/$cb.$i.target_list --ouput_directory $dout \
+            #--scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $dout/multidecomp.log
+            #echo "====DONE====" >> $dout/multidecomp.log
             (( i+=1 ))
             [[ ! -e $dout/$cb ]] && echo "decompilation [Decompilation] $f : FAIL" >> $status_log && continue
             cp -v $TEMPLATES_DIR/Makefile.prd $dout/$cb/
@@ -351,9 +356,11 @@ if (( ${EXECUTE[2]} == 1 )); then
     fi
 
     if [[ ! -e $decomp_out/$cb ]]; then 
-       python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
-        $decomp_in/$cb.target_list --ouput_directory $decomp_out \
-        --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $decomp_out/multidecomp.$cb.log
+       $TOOL_DIR/decompile.py -p $cb_build/$cb --target-list $decomp_in/$cb.target_list \
+            -l $decomp_out/multidecomp.$cb.log -o $decomp_out -s $DECOMP_TOOL_DIR -f DUMMY
+       #python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
+       # $decomp_in/$cb.target_list --ouput_directory $decomp_out \
+       # --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $decomp_out/multidecomp.$cb.log
         mv $decomp_out/multidecomp.$cb.log $decomp_out/$cb/multidecomp.log
     fi 
     [[ ! -e $decomp_out/$cb ]] && echo "decompilation [Decompilation] : FAIL" >> $status_log && exit -1

@@ -19,6 +19,7 @@ for i in $cb; do
 	for j in $(cat patched_functions/${i}_info | perl -p -e's/^[^:]+: */ /;s/\n$//' | perl -p -e's/$/\n/;s/(\sstruct|struct\s)//g'); do 
        susp_file=$destdir/build/$i/susp-fn.log
        [[ ! -e $susp_file ]] && susp_file=$destdir/build/$i/susp-default.std.log
+       [[ ! -e $susp_file ]] && echo -e "\n$i : no cgfl data" && break
 	   num=$(egrep -c -w $j $destdir/cgfl/cgfl_rank/$i/$i.top_rank.list);
        total_fns=0
        if (( $(egrep -c 'Ranking per function with collection of ties' $susp_file)>0 )); then

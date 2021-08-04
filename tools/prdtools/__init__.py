@@ -1,1 +1,1 @@
-__all__=["elf"]
+__all__=["elf","r2ghidra_decomp","ghidra_decomp"]
