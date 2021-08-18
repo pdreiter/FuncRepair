@@ -116,7 +116,7 @@ fi
    #r2pm -ci r2ghidra
 #fi
 
-  if [[ ! -e "ghidra_10.0.1_PUBLIC_20210708" ]]; then
+  if [[ ! -e "ghidra_10.0.1_PUBLIC" ]]; then
       wget -c https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.0.1_build/ghidra_10.0.1_PUBLIC_20210708.zip
       unzip ghidra_10.0.1_PUBLIC_20210708.zip
   fi
