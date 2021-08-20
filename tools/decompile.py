@@ -89,7 +89,7 @@ def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log):
         wf.write(targ)
         wf.close()
 
-    cmd=f"python3 {hexrays_path}/prd_multidecomp_ida.cpp.py --target_list {target} --ouput_directory {decomp_out} --scriptpath {hexrays_path}/get_ida_details.py {ext_decomp} {append}"
+    cmd=f"python3 {hexrays_path}/prd_multidecomp_ida.py --target_list {target} --ouput_directory {decomp_out} --scriptpath {hexrays_path}/get_ida_details.py {ext_decomp} {append}"
     print(f"Calling:\n{cmd}",flush=True)
     p=None
     with open(log,"w") as o:
