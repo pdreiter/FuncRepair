@@ -837,7 +837,8 @@ class POV(object):
         """
         for i in [' ', '\n', '\r', '\t']:
             data = data.replace(i, '')
-        return data.decode('hex')
+        #return data.decode('hex')
+        return bytes.fromhex(data).decode('ISO-8859-1')
 
     @staticmethod
     def compile_pcre(data):
