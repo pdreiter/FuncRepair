@@ -41,6 +41,8 @@ if __name__ == "__main__":
                     symlink(test_dir+"/"+i,cur_dir+"/"+i)
                 except Exception as e:
                     print "Failed trying to link "+i
+                    print "symlink source:  "+test_dir+"/"+i
+                    print "symlink dest:  "+cur_dir+"/"+i
                     print e
 
 

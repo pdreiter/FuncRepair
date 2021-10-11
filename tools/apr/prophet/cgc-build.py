@@ -20,10 +20,13 @@ def compileit(out_dir, compile_only = False, config_only = False,chal="default",
     #build_dir=out_dir
     inc_dir=top_src_dir+"/include"
 
+    f=open("build.debug.log","w")
     # this path relies on the fact that this script resides in <CGC_ROOT>/prophet/
     base_dir=path.dirname(script_dir)
-    tools_dir=base_dir+"/tools/python3"
-    poller_dir=base_dir+"/polls/"+chal+"/poller"
+    outbase_dir=path.realpath(out_dir)
+    tools_dir=script_dir+"/tools"
+
+    poller_dir=script_dir+"/polls/"+chal+"/poller"
     if not path.exists(poller_dir):
         poller_dir=base_dir+"/challenges/"+chal+"/poller"
 
@@ -34,7 +37,9 @@ def compileit(out_dir, compile_only = False, config_only = False,chal="default",
     # the way that Prophet copies over the src directory
     # i.e. cp challenges/<dir> <dest_dir>/src 
     # breaks compilation - reorganizing to fix it
+    f.write("top_src_dir="+top_src_dir)
     if not path.exists(top_src_dir):
+        f.write("DOES NOT EXIST : top_src_dir="+top_src_dir)
         tmpdir="/tmp/"+chal+str(random.randint(1,1000))
         # move the original source dir to a random tmp dir
         shutil.move(out_dir,tmpdir)
@@ -42,8 +47,8 @@ def compileit(out_dir, compile_only = False, config_only = False,chal="default",
         makedirs(top_src_dir)
         # then move the tmpdir to <out_dir>/cb_src/<CHALLENGE>
         shutil.move(tmpdir,src_dir)
-        shutil.copy(script_dir+"/CMakeLists.txt",top_src_dir)
-        print("Copying "+script_dir+"/CMakeLists.txt to "+top_src_dir)
+        #shutil.copy(script_dir+"/CMakeLists.txt",top_src_dir)
+        #print("Copying "+script_dir+"/CMakeLists.txt to "+top_src_dir)
         chdir(out_dir)
         symlink(src_dir+"/src","src")
         symlink(src_dir+"/lib","lib")
@@ -53,7 +58,7 @@ def compileit(out_dir, compile_only = False, config_only = False,chal="default",
         makedirs(build_dir)
     if not path.exists(inc_dir):
         # copy the include dir to <out_dir>/cb_src/include
-        shutil.copytree(base_dir+"/include",inc_dir)
+        shutil.copytree(script_dir+"/include",inc_dir)
 
     chdir(build_dir);
 
