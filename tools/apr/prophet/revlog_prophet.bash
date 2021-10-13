@@ -7,6 +7,10 @@ IN_CGC_TEST=$ROOT_DIR/cgc_test
 POLLS=$ROOT_DIR/polls
 
 MY_PROPHET_PATH=$PROPHET64_BASE
+if [[ -z $CGC_CB_DIR ]]; then
+    echo "ERROR! CGC_CB_DIR path not set! expecting \$CGC_CB_DIR to be set to cb-multios directory"
+    exit -1
+fi
 if [[ -z $MY_PROPHET_PATH ]]; then
     echo "ERROR! Prophet path not set! expecting \$PROPHET64_BASE to be set to prophet-gpl directory"
     exit -1
@@ -14,30 +18,38 @@ fi
 if [[ ! -d $IN_CGC_TEST  && -d cgc_test ]]; then
     IN_CGC_TEST=$(realpath -- ./cgc_test)
 fi
+if [[ ! -d $IN_CGC_TEST ]]; then 
+	echo "ERROR! 'cgc_test' directory does not exist! expecting it in ${CGC_CB_DIR} or PWD ($PWD)"
+    exit -1
+fi
 if [[ ! -d $POLLS  && -d polls ]]; then
     POLLS=$(realpath -- ./polls)
+fi
+if [[ ! -d $POLLS ]]; then 
+	echo "ERROR! 'polls' directory does not exist! expecting it in ${ROOT_DIR} or PWD ($PWD)"
+    exit -1
 fi
 
 TEST=$1
 CFG_DEST=$2
 RUN_DEST=$3
 
-mkdir -p pchallenges/$TEST.src ptest/ pbin/
+mkdir -p transform.src/ ptest/ pbin/
 cp -r $IN_CGC_TEST/$TEST ptest/
 ln -sf $(realpath -- $POLLS/$TEST/poller) ptest/$TEST/
 ln -sf $(realpath -- $PRD_BASE_DIR/tools) ptest/$TEST/
 
-#cp -r $CGC_CB_DIR/challenges/$TEST pchallenges/$TEST.src/
+[[ ! -e transform.src/$TEST ]] && cp -r $CGC_CB_DIR/challenges/$TEST transform.src/$TEST
 #ln -sf $CGC_CB_DIR/include pchallenges/$TEST.src/
 #cp -r $SCRIPT_DIR/CMakeLists.txt pchallenges/$TEST.src/
 #ln -sf ${SCRIPT_DIR}/CMakeLists.txt .
 cp ${SCRIPT_DIR}/cgc-build.py pbin/
 cp ${SCRIPT_DIR}/cgc-test.py pbin/
 cp ${SCRIPT_DIR}/tester_common.py pbin/
-ln -sf ${SCRIPT_DIR}/CMakeLists.txt pbin/
-ln -sf $(realpath -- $POLLS) pbin/
-ln -sf $(realpath -- $PRD_BASE_DIR/tools/cb-multios) pbin/tools
-ln -sf $(realpath -- $CGC_CB_DIR/include) pbin/include
+[[ ! -e pbin/CMakeLists.txt ]] && ln -sf ${SCRIPT_DIR}/CMakeLists.txt pbin/
+[[ ! -e pbin/polls ]] && ln -sf $(realpath -- $POLLS) pbin/
+[[ ! -e pbin/tools ]] && ln -sf $(realpath -- $PRD_BASE_DIR/tools/cb-multios) pbin/tools
+[[ ! -e pbin/include ]] && ln -sf $(realpath -- $CGC_CB_DIR/include) pbin/include
 
 CGC_TEST=$(realpath -- ptest)
 #CGC_SRC=$(realpath -- pchallenges/$TEST.src)
