@@ -418,7 +418,7 @@ def main():
 
     args = parser.parse_args()
 	# SIGILL is 4, SIGTERM is 11, signals 32,33 don't exist
-    sig_okay = [i for i in range(65) if i not in [4,11,32,33]]
+    sig_okay = [i for i in range(256) if i not in [4,11,32,33]]
     if args.sigok:
         sig_okay.extend(args.sigok)
 
