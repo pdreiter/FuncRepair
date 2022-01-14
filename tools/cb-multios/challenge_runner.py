@@ -24,7 +24,7 @@ if IS_WINDOWS:
     CDB_PATH = 'C:/Program Files (x86)/Windows Kits/10/Debuggers/x64/cdb.exe'
 
 
-def run(challenges, timeout, seed, logfunc):
+def run(challenges, timeout, seed, logfunc, enable_fixes=False):
     """ Challenge launcher for replay services
 
     This will setup fds for all challenges according to:
@@ -41,8 +41,11 @@ def run(challenges, timeout, seed, logfunc):
     """
     cb_env = {'seed': seed}  # Environment variables for all challenges
 	
-    if os.environ.get('LD_BIND_NOW') is not None:
+    if os.environ.get('LD_BIND_NOW',None) is not None:
 	    cb_env['LD_BIND_NOW']='1'
+
+    if enable_fixes:
+	    cb_env['ENABLE_FIXES']='1'
 
     # This is the first fd after all of the challenges
     last_fd = 2 * len(challenges) + 3

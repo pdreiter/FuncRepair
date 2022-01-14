@@ -418,7 +418,12 @@ def main():
 
     args = parser.parse_args()
 	# SIGILL is 4, SIGTERM is 11, signals 32,33 don't exist
-    sig_okay = [i for i in range(256) if i not in [4,11,32,33]]
+    #fatals=[4,11,32,33,124,125,126,127]; 
+    fatals=[4,11,33,124,125,126,127]; 
+    for i in range(len(fatals)):
+       if fatals[i] <= 255:
+           fatals.append(fatals[i]+128)
+    sig_okay = [i for i in range(256) if i not in fatals]
     if args.sigok:
         sig_okay.extend(args.sigok)
 

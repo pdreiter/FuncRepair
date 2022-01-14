@@ -99,6 +99,34 @@ CGCTEST_DIR="${DIR}/$dest"
 [ ! -e ${CGCTEST_DIR} ] && mkdir -p ${CGCTEST_DIR} && BUILD_CGCTEST=1
 if ((  $BUILD_CGCTEST==1 )) ; then echo "Overwriting ALL contents in '$dest' CB subdir."; fi
 
+build_cgccb(){
+    echo "[build_cgccb] $BUILD_DIR $1"
+    chal=$1
+    CHAL=$(basename $chal)
+    [[ ! -d $BUILD_DIR ]] && mkdir -p $BUILD_DIR
+    if [[ ! -d $BUILD_DIR/challenges/$CHAL ]] ; then
+	pushd $BUILD_DIR
+	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+	  -DCMAKE_VERBOSE_MAKEFILE=ON \
+	  -DBUILD_SHARED_LIBS=ON \
+	  -DBUILD_STATIC_LIBS=OFF \
+	  -DCMAKE_C_COMPILER=gcc-8 \
+	  -DCMAKE_ASM_COMPILER=gcc-8 \
+	  -DCMAKE_CXX_COMPILER=g++-8 \
+	  ../
+	popd
+	make 
+    fi
+    if [[ ! -z $CHAL ]] ; then 
+	if [[ ! -e $BUILD_DIR/challenges/$CHAL/$CHAL ]] ; then
+	    pushd $BUILD_DIR/challenges/$CHAL
+	    make
+	    popd
+        fi
+    fi	  
+
+}
+
 build_cgctest(){
     chal=$1
     num_pos=0
@@ -127,7 +155,8 @@ build_cgctest(){
     LGPOLLDIR="${GBUILD}/poller"
     cwd=$(pwd)
     # creating the compiler flags to pass into genprog and funcinsert
-    if [ -d ${LBUILD} ]; then 
+    if [ ! -d ${LBUILD} ]; then echo -e "Skipping $CHAL --- not built!"; 
+    elif [ -d ${LBUILD} ]; then 
         build=$BUILD_CGCTEST
         [ ! -e ${GBUILD} ] && build=1 && mkdir -p ${GBUILD}
         [[ ! -e ${GTEST} || ! -e ${GMAKE} ]] && build=1
@@ -244,7 +273,10 @@ build_cgctest(){
                     pov=$(basename $i)
                     scriptout=$($GTOOLDIR/cb-replay-pov.py --cbs ${LBUILD}/$CHAL --timeout 5 --negotiate ${LBUILD}/${pov} > /dev/null)
                     pass=$?
-                    if (( $pass != 0 )); then 
+                    scriptout=$($GTOOLDIR/cb-replay-pov.py --cbs ${LBUILD}/${CHAL}_patched --timeout 5 --negotiate ${LBUILD}/${pov} > /dev/null)
+                    fail=$?
+		    echo -e "[POV] $CHAL | ${pov} [$pass] [$fail] "
+                    if (( $pass != 0 && $fail == 0 )); then 
                     s=$(echo $pov | sed 's/\..*//')
                     povs+=($s)
                     sTEST=${GBUILD}/test-$s.sh
@@ -320,8 +352,12 @@ link_dirs(){
 
 if [ $ALLCBS -eq 1 ]; then 
 index=0
+#build_cgccb ;
 for chal in $DIR/challenges/*/; do
     CHAL="$(basename $chal)"
+    if [[ ! -e $chal_build/$CHAL ]] ; then
+        build_cgccb $CHAL
+    fi
     (( index+=${#CHAL} ))
     (( $index > 80 )) && index=${#CHAL} && echo ""
     echo -n -e "$CHAL, "
@@ -337,6 +373,9 @@ for c in ${TESTLIST[*]}; do
     echo -e "\nBuilding test $c"
     chal=$DIR/challenges/$c
     chal_build="${BUILD_DIR}/challenges/${c}"
+    if [[ ! -e $chal_build/$c ]] ; then
+        build_cgccb $chal
+    fi
     if [[ -e $chal_build/$c ]] ; then
          #CHAL=$c
          #(( index+=${#CHAL} ))

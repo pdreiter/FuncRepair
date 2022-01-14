@@ -46,9 +46,11 @@ from common import Timeout, TimeoutError
 from subprocess import TimeoutExpired
 import challenge_runner
 
-generate_replay_log=False
+generate_replay_log=True
 
 if generate_replay_log:
+    o=open("seed.log","wb")
+    o.close()
     o=open("replay.log","wb")
     o.close()
     o=open("replay.out.log","wb")
@@ -715,7 +717,12 @@ class Throw(object):
                 challenges[i]="/usr/bin/perf stat "+os.path.abspath(x)
            self.log('Obtaining run-time for: '+challenges[0])
 
-        self.procs, watcher = challenge_runner.run(challenges, self.timeout, seed, self.log)
+        #PEMMA
+        if generate_replay_log:
+            o=open("seed.log","wb")
+            o.write(bytes(seed,'utf-8'))
+        self.procs, watcher = challenge_runner.run(challenges, self.timeout, seed, self.log,\
+                               (os.environ.get('ENABLE_FIXES',None) is not None) )
 
         # Start a thread to buffer data from the challenges' stdout
         buf_thread = threading.Thread(target=self.buffer_pipe_data, args=(self.procs[0].stdout,))
@@ -1213,17 +1220,27 @@ class POV(object):
             if generate_replay_log:
                 try:
                     o=open("replay.out.log","ab")
-                    try:
-                        if (type(values[0])==str):
-                            o.write((' '.join(values)))
-                        else:
-                            #o.write((b' '.join(values)).decode('ascii'))
-                            o.write((b' '.join(values)).decode('ISO-8859-1'))
-                    except:
-                        o.write((b' '.join(values)))
+                    bvalues=bytearray()
+                    #print(f"values length = {len(values)} [type={type(values)}]")
+                    #print(f"Values = '{values[0]}' (type = {type(values[0])}")
+                    for v in values:
+                        if isinstance(v,str): 
+                            vvv=v.encode('ISO-8859-1')
+                            o.write(vvv)
+                        elif isinstance(v,bytes): 
+                            o.write(v)
+                    #try:
+                    #    if (type(bvalues[0])==str):
+                    #        o.write((b' '.join(bvalues)).decode('ISO-8859-1'))
+                    #    else:
+                    #        #o.write((b' '.join(values)).decode('ascii'))
+                    #        o.write((b' '.join(bvalues)).decode('ISO-8859-1'))
+                    #except:
                     o.close()
                 except Exception as ex:
                     print("Exception while trying to write 'replay.out.log'")
+                    #print(f"BValues = {[(b,type(b)) for b in bvalues]}")
+                    #print(f"Values = {[(b,type(b)) for b in values]}")
                     print(ex)
                     pass
 
@@ -1311,12 +1328,18 @@ class POV(object):
                 o=open("replay.log","ab")
                 i,v = (None,None)
                 try:
+                    for v in printmevalues:
+                        if isinstance(v,str): 
+                            vvv=v.encode('ISO-8859-1')
+                            o.write(vvv)
+                        elif isinstance(v,bytes): 
+                            o.write(v)
                     #if (type(printmevalues[0])==str):
-                    if isinstance(printmevalues[0],bytes):
-                        o.write(b' '.join(printmevalues))
-                        #o.write((b' '.join(printmevalues)).decode('ISO-8859-1'))
-                    else:
-                        o.write((' '.join(printmevalues)).encode('ISO-8859-1'))
+                    #if isinstance(printmevalues[0],bytes):
+                    #    o.write(b' '.join(printmevalues))
+                    #    #o.write((b' '.join(printmevalues)).decode('ISO-8859-1'))
+                    #else:
+                    #    o.write((' '.join(printmevalues)).encode('ISO-8859-1'))
                 except Exception as e:
                     print("[values] Exception {}\nvalues = {},type(value[0])={}".format(e,printmevalues,type(printmevalues[0])))
                 o.close()
@@ -1426,11 +1449,20 @@ class Results(object):
         Raises:
             None
         """
-        got_passed, got_failed, got_logs = results
+        got_passed, got_failed, got_logs, returncodes = results
         print('\n'.join(got_logs + ['END REPLAY']))
         self.passed += got_passed
         self.failed += got_failed
+	# SIGILL is 4, SIGTERM is 11, signals 32,33 don't exist
+        fatals=[4,11,33,124,125,126,127]; 
+        for i in range(len(fatals)):
+           if fatals[i] <= 255:
+               fatals.append(fatals[i]+128)
+        sig_okay = [i for i in range(256) if i not in fatals]
+        failed=any([abs(stat) not in sig_okay for stat in returncodes])
         if got_failed > 0:
+            self.errors += 1
+        elif failed:
             self.errors += 1
         else:
             self.full_passed += 1
@@ -1499,7 +1531,7 @@ def run_pov(cbs, pov_info, timeout, debug, negotiate, cb_seed, munge_seed, dbi=N
                 pass
         thrower.dump()
 
-    return thrower.passed, thrower.failed, thrower.logs
+    return thrower.passed, thrower.failed, thrower.logs, [x.returncode for x in thrower.procs]
 
 
 def main():
