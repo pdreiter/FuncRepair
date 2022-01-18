@@ -46,15 +46,7 @@ from common import Timeout, TimeoutError
 from subprocess import TimeoutExpired
 import challenge_runner
 
-generate_replay_log=True
-
-if generate_replay_log:
-    o=open("seed.log","wb")
-    o.close()
-    o=open("replay.log","wb")
-    o.close()
-    o=open("replay.out.log","wb")
-    o.close()
+gen_rep_log=[False,'seed.log','replay.log','replay.out.log']
 
 test={'enabled':False,'id':None,'expected':bytearray(),'write':bytearray(),'seed':None}
 
@@ -718,8 +710,8 @@ class Throw(object):
            self.log('Obtaining run-time for: '+challenges[0])
 
         #PEMMA
-        if generate_replay_log:
-            o=open("seed.log","wb")
+        if gen_rep_log:
+            o=open(gen_rep_log[1],"wb")
             o.write(bytes(seed,'utf-8'))
         self.procs, watcher = challenge_runner.run(challenges, self.timeout, seed, self.log,\
                                (os.environ.get('ENABLE_FIXES',None) is not None) )
@@ -1217,9 +1209,9 @@ class POV(object):
 
             read_args['match'] = {'invert': invert, 'values': values}
             #json_append_expected_data(values)
-            if generate_replay_log:
+            if gen_rep_log:
                 try:
-                    o=open("replay.out.log","ab")
+                    o=open(gen_rep_log[3],"ab")
                     bvalues=bytearray()
                     #print(f"values length = {len(values)} [type={type(values)}]")
                     #print(f"Values = '{values[0]}' (type = {type(values[0])}")
@@ -1323,9 +1315,9 @@ class POV(object):
         echo = POV.get_attribute(data, 'echo', 'no', ['yes', 'no', 'ascii'])
         self.add_step('write', {'value': values, 'echo': echo})
         json_append_write_data(values)
-        if generate_replay_log:
+        if gen_rep_log:
             try:
-                o=open("replay.log","ab")
+                o=open(gen_rep_log[2],"ab")
                 i,v = (None,None)
                 try:
                     for v in printmevalues:
@@ -1453,7 +1445,7 @@ class Results(object):
         print('\n'.join(got_logs + ['END REPLAY']))
         self.passed += got_passed
         self.failed += got_failed
-	# SIGILL is 4, SIGTERM is 11, signals 32,33 don't exist
+    # SIGILL is 4, SIGTERM is 11, signals 32,33 don't exist
         fatals=[4,11,33,124,125,126,127]; 
         for i in range(len(fatals)):
            if fatals[i] <= 255:
@@ -1561,6 +1553,9 @@ def main():
     parser.add_argument('--cb_seed', required=False, type=str,
                         help='Specify the CB Seed')
 
+    parser.add_argument('--replay', required=False, action='store_true',
+                        default=False, help='generate replay.log and replay.out.log')
+
     parser.add_argument('--dbi', required=False, type=str, default=None, 
     help='Specify any dynamic binary instrumentation (like valgrind) to be prepended to executable under test\
     e.g. --dbi "/usr/bin/valgrind --tool=callgrind --log-file=tramp.cg.log --callgrind-out-file=tramp.cg.out"')
@@ -1571,6 +1566,17 @@ def main():
         print(f"Running {args.cbs} in debug mode")
     if args.id:
         enable_json_dump()
+
+    global gen_rep_log
+    gen_rep_log[0]=args.replay
+    if gen_rep_log[0]:
+        o=open(gen_rep_log[1],"wb")
+        o.close()
+        o=open(gen_rep_log[2],"wb")
+        o.close()
+        o=open(gen_rep_log[3],"wb")
+        o.close()
+
 
     assert args.concurrent > 0, "Conccurent count must be less than 1"
 
