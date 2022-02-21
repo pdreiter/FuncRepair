@@ -333,30 +333,32 @@ for i,x in enumerate(test_list):
         pos_tests.append(value)
 
 
-# let's get rid of pass test cases that have identical spectra to any fail case
-# this data uses the raw callgrind data, not the translated spectra
-# so this doesn't work :(
-remove_me=set()
+REDUCTION_REDUNDANT=False
 if args.reduce:
-    spectra_dict=copy.copy(fulldict)
-    for x in spectra_dict.keys():
-        for y in spectra_dict[x].keys():
-            if spectra_dict[x][y] > 0.:
-               spectra_dict[x][y] = 1
-    for n in neg_tests:
-        neg_spectra=spectra_dict[n]
-        for p in pos_tests:
-            if neg_spectra == spectra_dict[p]:
-                #remove_me.append(p)
-                remove_me.add(p)
-    
-    if len(remove_me)>0:
-        logprint("The following tests have identical spectra to negative tests.")
-        logprint("Removing:")
-    for r in remove_me:
-        logprint(r)
-        del fulldict[r]
-        test_list.remove(r)
+    remove_me=set()
+    if REDUCTION_REDUNDANT:
+        spectra_dict=copy.copy(fulldict)
+        # let's get rid of pass test cases that have identical spectra to any fail case
+        # this data uses the raw callgrind data, not the translated spectra
+        # so this doesn't work :(
+        for x in spectra_dict.keys():
+            for y in spectra_dict[x].keys():
+                if spectra_dict[x][y] > 0.:
+                   spectra_dict[x][y] = 1
+        for n in neg_tests:
+            neg_spectra=spectra_dict[n]
+            for p in pos_tests:
+                if neg_spectra == spectra_dict[p]:
+                    #remove_me.append(p)
+                    remove_me.add(p)
+        
+        if len(remove_me)>0:
+            logprint("The following tests have identical spectra to negative tests.")
+            logprint("Removing:")
+        for r in remove_me:
+            logprint(r)
+            del fulldict[r]
+            test_list.remove(r)
 
 for i,x in enumerate(test_list):
     if x == all_keys:
@@ -398,6 +400,17 @@ for x in func_list:
            passed_dict[x]+= 1. if fulldict[y][x]>0. else 0.
        if 'n' in y:
            failed_dict[x]+= 1. if fulldict[y][x]>0. else 0.
+
+if args.reduce:
+    remove_me=set()
+    for x in func_list:
+        if passed_dict[x]==0 and failed_dict[x]==0:
+            print(f"REMOVING {x}")
+            remove_me.add(x)
+    for x in remove_me:
+        func_list.remove(x)
+        del passed_dict[x]
+        del failed_dict[x]
 
 import math
 for x in func_list:
