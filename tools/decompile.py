@@ -89,7 +89,7 @@ def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log):
         wf.write(targ)
         wf.close()
 
-    cmd=f"python3 {hexrays_path}/prd_multidecomp_ida.py --target_list {target} --ouput_directory {decomp_out} --scriptpath {hexrays_path}/get_ida_details.py {ext_decomp} {append}"
+    cmd=f"python3 {hexrays_path}/prd_multidecomp_ida.cpp.py --target_list {target} --ouput_directory {decomp_out} --scriptpath {hexrays_path}/get_ida_details.py {ext_decomp} {append}"
     print(f"Calling:\n{cmd}",flush=True)
     p=None
     with open(log,"w") as o:
@@ -108,6 +108,8 @@ if __name__ == "__main__":
                         type=str, required=True)
     parser.add_argument("-i","--independent-builds",dest="indep",help="Specifies that Fn are independent runs",
                         action='store_const',const=True,default=False)
+    parser.add_argument("--ghidra-only",dest="ghidra",help="gets ghidra decompilation content",
+                        action='store_const',const=True,default=False)
     parser.add_argument("--debug",dest="debug",help="strip the binary before using",
                         action='store_const',const=True,default=False)
     parser.add_argument("--no-strip",dest="strip",help="Don't strip the binary before using",
@@ -117,11 +119,20 @@ if __name__ == "__main__":
     parser.add_argument("-l","--log",dest="log",help="Logfile for decompilation output",
                         type=str, default=None)
     parser.add_argument("-o","--out",dest="out",help="Directory for decompiled source code",
-                        type=str, default=None,required=True)
+                        type=str, default=None,required=False)
     parser.add_argument("-s","--hexrays-script-path",dest="hexrays",help="Directory where 'get_ida_details.py' and 'prd_multidecomp_ida.py' reside",
-                        type=str, required=True)
+                        type=str, required=False)
     args=parser.parse_args()
-    if not args.indep:
+    if args.ghidra:
+        ghidra_project_init(args.prog)
+        id_=os.path.basename(args.prog)
+        dir_=os.path.dirname(args.prog)
+        sprog=elf.strip_binary(args.prog)
+        bin_=args.prog if args.strip else sprog
+        for f in args.funcs:
+            ghidra_decomp.ghidra_decompile(dir_,id_,bin_,f,out_="x.c",stdout=True)
+        
+    elif not args.indep:
         call_hexrays(args.prog,args.funcs,args.hexrays,args.tout,args.out,args.log)
     else:
         for i,fn in enumerate(args.funcs):

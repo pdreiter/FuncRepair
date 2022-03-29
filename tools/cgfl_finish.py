@@ -2,11 +2,12 @@
 
 
 class cgfl:
-    def __init__(self,cb=None,src=None,inputdir=None,outputdir=None,valid_funcs=None):
+    def __init__(self,cb=None,src=None,inputdir=None,outputdir=None,valid_funcs=None,debug=False):
         self.cb=cb
         self.srcdir=src
         self.cg_in_dir=inputdir
         self.cg_out_dir=outputdir
+        self.debug=debug
         import os
         x="{}/tmp".format(self.cg_out_dir)
         if not os.path.exists(x):
@@ -46,7 +47,10 @@ class cgfl:
             self.run_cg_annotate(test,cg_out)
 
     def get_demangled(self,l):
-        return [ x if '(' not in x else x.split('(',1)[0] \
+        if len(self.valid_funcs)<=0:
+            return []
+        else:
+            return [ x if '(' not in x else x.split('(',1)[0] \
                                 for x in [v[0] for v in self.valid_funcs] \
                              ]
 
@@ -60,9 +64,10 @@ class cgfl:
         proc=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         sout,serr=proc.communicate()
         output=sout.decode('utf-8')
-        #print("[ DEBUG ] Running callgrind_annotate => {}".format(" ".join(cmd)))
-        #print("[ DEBUG ] output => {}".format(output))
-        #print("[ DEBUG ] stderr => {}".format(serr.decode('utf-8')))
+        if self.debug:
+            print("[DEBUG] Running callgrind_annotate => {}".format(" ".join(cmd)))
+            print("[DEBUG] output => {}".format(output))
+            print("[DEBUG] stderr => {}".format(serr.decode('utf-8')))
         outf="{}/{}/{}.annot".format(self.cg_out_dir,"tmp",test)
         with open(outf,'w') as f:
             f.write(output)
@@ -143,7 +148,7 @@ class cgfl:
                     self.screened_data[y]=dict()
                 keepme=keep_re.search(x)
                 if keepme:
-                    self.screened_datay[y][x]=self.raw_data[y][k]
+                    self.screened_datay[y][x]=self.raw_data[y][x]
                 else:
                     yy=self.screened_data[y].get(x,None)
                     if yy:
@@ -177,12 +182,12 @@ if __name__ == "__main__":
     fini_re='__do_global_dtors_aux_fini_array_entry|_fini|__libc_csu_fini'
     thunk_re='__x86.get_pc_thunk.[abcds][ix]|__cxa_pure_virtual'
     reg_re='deregister_tm_clones|register_tm_clones'
-    glob_re='__do_global_dtors_aux|__do_global_dtors_aux_fini_array_entry'
+    glob_re='__do_global_dtors_aux|__do_global_dtors_aux_fini_array_entry|_dl_relocate_static_pie'
     start_re='_start|__init_array_start|start'
     alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
     #L_re='\.L[[:digit:]]+'
     L_re='\.L\d+'
-    globals_re='((cgc__?)?(free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strncat|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
+    globals_re='((cgc__?|c_?)?(v_sprintf_s|__moddi3|__divdi3|str_to_ulong|free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strncat|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
     specific_issue_re='((cgc__?)(gb_new|gb_reset))'
     exclude_me="|".join([globals_re,init_re,fini_re,thunk_re,reg_re,
                          glob_re,start_re,alloc_re,L_re,specific_issue_re])
@@ -214,6 +219,8 @@ if __name__ == "__main__":
             help='minimum number of bytes a function requires to be outputted')
         #parser.add_argument('--no-sym-info',dest='sym_info',action='store_false',default=True,
         #    help="Obtain symbols but do not extract symbol information (no objdump)")
+        parser.add_argument('--reduce',dest='reduce',action='store_true',default=False, 
+            help="indicates to calc_susp_pp.py to remove any function that is never touched by positive or negative tests --- ONLY USED when RAFL input size is too large!")
         parser.add_argument('--AND-min',dest='min_AND',action='store_true',default=False,
             help='Need to satisfy both minimum number of bytes and instructions for a function to be outputted')
         parser.add_argument('--json-out',dest='json',action='store',default=None, 
@@ -252,6 +259,11 @@ if __name__ == "__main__":
     if args.exe:
         import subprocess,shlex
         binelf=elf.elf_file(binary_path=args.exe,symbol_info=True,debug=False)
+        if args.debug:
+            mangled=binelf.mangled()
+            #print(f"[DEBUG] Mangled symbols:")
+            #for i,m in enumerate(mangled):
+            #    print(f"[DEBUG] {i}: {m}");
         print(f"Minimum bytes: {args.min_bytes}")
         minset=elf.get_min_set(binelf,min_inst=args.min_inst,min_bytes=args.min_bytes,min_AND=args.min_AND)
         #and_min="" if not args.min_AND else "--AND-min"
@@ -268,8 +280,15 @@ if __name__ == "__main__":
         #sout,serr=proc.communicate()
         #output=sout.decode('utf-8')
         #_functions=output.split('\n')
-        output="Satisfying symbols:"
         _functions=minset
+        if not _functions or len(_functions)<1:
+            print("ERROR!  We have no min set of functions! Why?")
+            import sys; sys.exit(-1)
+        elif args.debug:
+            for sym,demangled in _functions:
+                print(f"symbol:{sym}  => demangled:{demangled}")
+            
+        output="Satisfying symbols:"
         for sym,demangled in _functions:
             y=exclude_re.search(demangled)
             if not y:
@@ -283,9 +302,14 @@ if __name__ == "__main__":
         import sys
         print(output,file=sys.stderr)
 
-    ssat=",\n".join([f"{s[0]} [s{1}]" for s in satisfied])
-    print(f"These functions satisfy: {ssat}")
-    cgfl_o = cgfl(cb=cb,src=args.src,inputdir=args.results,outputdir=args.results,valid_funcs=satisfied)
+    if not satisfied or len(satisfied)<1:
+        print("ERROR!  We have no valid set of functions! Why?")
+        import sys; sys.exit(-1)
+    if args.debug:
+        ssat=",\n".join([f"{s[0]} [s{1}]" for s in satisfied])
+        print(f"These functions satisfy: {ssat}")
+    print(f"# satisfying functions: {len(satisfied)}")
+    cgfl_o = cgfl(cb=cb,src=args.src,inputdir=args.results,outputdir=args.results,valid_funcs=satisfied,debug=args.debug)
     cgfl_o.annotate()
     screened_out=cgfl_o.screen_dicts(exclude_me)
     print(f"Screened out these functions {','.join(screened_out)}")
@@ -295,15 +319,16 @@ if __name__ == "__main__":
     #$script_dir/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K  > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
     if args.results and args.r_out and args.top_k:
         exe_dir=os.path.dirname(args.exe)
-        calc_exe="{} --ext '.dict' --in {} --out {} --all_rank --pickle --standardize --print --r_input --r-out {} --cb {} --top-k-percent {} --debug {} --log {}".format(
+        calc_exe="{} --ext '.dict' --in {} --out {} --all_rank --pickle --standardize --print --r_input --r-out {} --cb {} --top-k-percent {} --debug {} --log {} {}".format(
         "{}/calc_susp_pp.py".format(scriptdir),
         args.results,
         exe_dir,
         args.r_out,
         cb,
         args.top_k,
-		f" --r-seed {args.r_seed} " if args.r_seed else "",
-        "{}/susp-fn.log".format(exe_dir)
+        f" --r-seed {args.r_seed} " if args.r_seed else "",
+        "{}/susp-fn.log".format(exe_dir),
+        "--reduce" if args.reduce else ""
         )
         print("[ RUNNING ] Generating R scripts from input:")
         print(calc_exe)
@@ -311,6 +336,7 @@ if __name__ == "__main__":
         proc=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         sout,serr=proc.communicate()
         output=sout.decode('utf-8')
+        print(output)
         s_out="{}/{}.calc_susp_pp.log".format(args.results,cb)
         with open(s_out,'w') as f:
             f.write(output)

@@ -5,7 +5,13 @@
 Session.vim
 .netrwhist
 *~
+R_PACKAGES
+*.vscode*
 
+*__pycache__*
+
+ida
+ghidra*
 *.bin
 *.i
 *.s

@@ -59,7 +59,11 @@ class elf_file:
             if characterize:
                 self.characterize_symbols()
 
+    
     def characterize_symbols(self):
+        """
+        note this is specific to 32b ELF files (see {8} in start re.match)
+        """
         for f,dmf in self.local_symbols:
             import sys
             print("- {}".format(f),file=sys.stderr)
@@ -107,6 +111,13 @@ class elf_file:
             
     def is_demangled(self,demangled:str):
         return demangled in list(self.mangled_syms_lut.keys())
+
+    def demangled(self):
+        return list(self.mangled_syms_lut.keys())
+            
+    def mangled(self):
+        return list(self.demangled_syms_lut.keys())
+            
             
     def get_demangled_symbol(self,mangled:str):
         search_re=re.compile(r"\b"+f"{mangled}"+r"\b")
@@ -204,19 +215,26 @@ class elf_file:
         demangled_syms=dict()
         mangled_syms=dict()
         for x in lines:
-            if len(x)<1:
+            if len(x)<13:
                 self.dprint(x)
                 continue
+            self.dprint(x)
             symadd=x[0:8]
             symtype=x[9:10]
             symname=x[11:len(x)]
+            if x[8]!=" ":
+                print("ERROR!! Looks like a 64b binary\nExiting.")
+                import sys;sys.exit(-1);
+                
+                
             ltype=symbol_dict.get(symtype,None)
             if not ltype:
                 symbol_dict[symtype]=list()
             x=symname.rstrip()
-            if x in self.bad_syms:
+            if x in self.bad_syms or len(x)<1:
                 continue
             cmd=["/usr/bin/c++filt",x]
+            self.dprint(f"{cmd}")
             out = subprocess.check_output(" ".join(cmd),shell=True)
             dem = out.decode('ascii').rstrip()
             self.dprint(f"{symtype} : {symname} => {dem}")

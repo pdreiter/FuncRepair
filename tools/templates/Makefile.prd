@@ -17,7 +17,7 @@ FUNCREP:="./funcinsert.py"
 else
 FUNCREP:="${PRD_BASE_DIR}/funcinsert_cpp.py"
 endif
-DIET_GCC ?= ${DIET32PATH}/diet_gcc
+DIET_GCC ?= ${DIET32PATH}/diet_gcc-8
 
 #some prophet-related overhead
 override:=0
@@ -29,7 +29,7 @@ ifeq ($(CC),cc)
 override:=1
 endif
 ifeq ($(override),1)
-CC:=gcc
+CC:=gcc-8
 CFLAGS:= $(CFLAGS) -nodefaultlibs -fno-stack-protector
 endif
 
