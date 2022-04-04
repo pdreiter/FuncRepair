@@ -15,7 +15,7 @@ MYINT:=$(patsubst %.c,%.i, $(MYSRC))
 ifeq (${PRD_BASE_DIR},)
 FUNCREP:="./funcinsert.py"
 else
-FUNCREP:="${PRD_BASE_DIR}/funcinsert_cpp.py"
+FUNCREP:="${PRD_BASE_DIR}/funcinsert.py"
 endif
 DIET_GCC ?= ${DIET32PATH}/diet_gcc-8
 

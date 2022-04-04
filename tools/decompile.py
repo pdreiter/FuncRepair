@@ -4,9 +4,6 @@ import os, subprocess
 
 from prdtools import elf,ghidra_decomp
 
-r2ghidra_enabled=False
-ghidra_enabled=True
-
 
 def gen_target_content(prog,funcs):
     prg_path=os.path.realpath(prog)
@@ -43,11 +40,12 @@ def ghidra_project_init(prog):
     for i in [prog,sprog]:
         ghidra_decomp.add_binary(dir_,id_,i);
 
-def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log):
+def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log,decompdir):
     elf_syms=elf.elf_file(binary_path=prog,characterize=False)
     # strip binary if program has mangled strings (only way I know how to quickly determine g++)
-    strip=prog_is_cpp(prog)
-    if ghidra_enabled and strip:
+    is_cpp=prog_is_cpp(prog)
+    strip=is_cpp
+    if ghidra_enabled and is_cpp:
         ghidra_project_init(prog)
     
     sym_fns=list()
@@ -74,7 +72,7 @@ def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log):
     #    prog=elf.strip_binary(prog)
     append=""
     ext_decomp=""
-    if strip:
+    if is_cpp:
         append="--strip-binary" 
         if r2ghidra_enabled:
             r2ghidra_=os.path.dirname(os.path.realpath(__file__))+"/prdtools/r2ghidra_decomp.py"
@@ -83,13 +81,15 @@ def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log):
             ghidra_=os.path.dirname(os.path.realpath(__file__))+"/prdtools/ghidra_decomp.py"
             ext_decomp=f"--r2ghidra '{ghidra_} -p {prog} -f <SYM> -b <BIN> '"
 
+    if decompdir:
+        append+=f" --decompdir {decompdir}"
 
     targ=gen_target_content(prog,sym_fns)
     with open(target,"w") as wf:
         wf.write(targ)
         wf.close()
 
-    cmd=f"python3 {hexrays_path}/prd_multidecomp_ida.cpp.py --target_list {target} --ouput_directory {decomp_out} --scriptpath {hexrays_path}/get_ida_details.py {ext_decomp} {append}"
+    cmd=f"python3 {hexrays_path}/prd_multidecomp_ida.py --target_list {target} --ouput_directory {decomp_out} --scriptpath {hexrays_path}/get_ida_details.py {ext_decomp} {append}"
     print(f"Calling:\n{cmd}",flush=True)
     p=None
     with open(log,"w") as o:
@@ -108,6 +108,10 @@ if __name__ == "__main__":
                         type=str, required=True)
     parser.add_argument("-i","--independent-builds",dest="indep",help="Specifies that Fn are independent runs",
                         action='store_const',const=True,default=False)
+    parser.add_argument('--decompdir',dest='decompdir',default=None,action='store',
+                        help='path to store raw decompiled content')
+    parser.add_argument("--hexrays-only",dest="onlyhexrays",help="disables ghidra decompilation content",
+                        action='store_const',const=True,default=False)
     parser.add_argument("--ghidra-only",dest="ghidra",help="gets ghidra decompilation content",
                         action='store_const',const=True,default=False)
     parser.add_argument("--debug",dest="debug",help="strip the binary before using",
@@ -123,6 +127,12 @@ if __name__ == "__main__":
     parser.add_argument("-s","--hexrays-script-path",dest="hexrays",help="Directory where 'get_ida_details.py' and 'prd_multidecomp_ida.py' reside",
                         type=str, required=False)
     args=parser.parse_args()
+    global ghidra_enabled,r2ghidra_enabled
+    r2ghidra_enabled=False
+    ghidra_enabled=True
+
+    if args.onlyhexrays:
+        ghidra_enabled=False
     if args.ghidra:
         ghidra_project_init(args.prog)
         id_=os.path.basename(args.prog)
@@ -130,16 +140,17 @@ if __name__ == "__main__":
         sprog=elf.strip_binary(args.prog)
         bin_=args.prog if args.strip else sprog
         for f in args.funcs:
-            ghidra_decomp.ghidra_decompile(dir_,id_,bin_,f,out_="x.c",stdout=True)
+            outfile=None if not args.decompdir else f"{args.decompdir}/{id_}/{f}-ghidra.c"
+            ghidra_decomp.ghidra_decompile(dir_,id_,bin_,f,out_=outfile,stdout=True)
         
     elif not args.indep:
-        call_hexrays(args.prog,args.funcs,args.hexrays,args.tout,args.out,args.log)
+        call_hexrays(args.prog,args.funcs,args.hexrays,args.tout,args.out,args.log,args.decompdir)
     else:
         for i,fn in enumerate(args.funcs):
             target=f"{args.tout}.{i}"
             decomp_out=f"{args.out}.{i}"
             log=f"{args.log}.{i}"
-            call_hexrays(args.prog,[fn],args.hexrays,target,decomp_out,log)
+            call_hexrays(args.prog,[fn],args.hexrays,target,decomp_out,log,args.decompdir)
             
 
             

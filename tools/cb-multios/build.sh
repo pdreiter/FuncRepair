@@ -4,6 +4,13 @@ set -e
 # Root cb-multios directory
 DIR=${CGC_CB_DIR}
 TOOLS="$DIR/tools"
+SCRIPTDIR=$(dirname -- $(realpath -- ${BASH_SOURCE[0]}))
+for i in cb-replay.py cb-replay-pov.py challenge_runner.py common.py tester.py ansi_x931_aes128.py; do
+cp $SCRIPTDIR/$i $TOOLS/$i
+done
+for i in CMakeLists.txt build.sh; do
+cp $SCRIPTDIR/$i $DIR/$i
+done
 NINJA_ENABLED=0
 
 # Install necessary python packages

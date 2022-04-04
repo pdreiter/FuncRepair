@@ -8,6 +8,7 @@
 export SCRIPT=$(realpath ${BASH_SOURCE[0]})
 export PRD_BASE_DIR=$(dirname -- $SCRIPT)
 export IDA_BASE_DIR=$(realpath -- $PRD_BASE_DIR/ida)
+export PART_DECOMP_DIR=$(realpath -- $PRD_BASE_DIR/partial_decompilation)
 export R_LIBS=$PRD_BASE_DIR/R_PACKAGES/lib
 export PROPHET64_BASE=$PRD_BASE_DIR/PROPHET/prophet-gpl
 UPDATE=$1
@@ -15,7 +16,7 @@ INVOKEDIR=$PWD
 cd $PRD_BASE_DIR
 
 
-if [[ ! -z $UPDATE ]]; then 
+if [[ ! -z $UPDATE ]] || [[ ! -e "$PAR_DECOMP_DIR/refs/defs.h" ]]; then 
     git submodule update --init 
     #if [[ -d "genprog-code-func-repair" ]]; then 
     #  pushd genprog-code-func-repair

@@ -61,17 +61,18 @@ for i in $@; do
     (( index+= 1 ))
 done;
 
-if [ -z "$CGC_CB_DIR" ] || [ -z "$PRD_BASE_DIR" ]; then
+if [ -z "$CGC_CB_DIR" ] || [ -z "$PRD_BASE_DIR" ] || [ -z "$PART_DECOMP_DIR" ]; then
     echo "Cannot continue - it looks like the CGC_CB_DIR is not set up."
     echo "This script expects PRD env to be set up, including"
-    echo "  - \$CGC_CB_DIR to be set to the cb-multios-prd repo root"
+    echo "  - \$CGC_CB_DIR to be set to the cb-multios repo root"
     echo "  - \$PRD_(BASE|GENPROG(SRC)?)_DIR to be set"
+    echo "  - \$PART_DECOMP_DIR to be set"
     echo ""
     echo "This is automatically done with the FuncRepair repo's init.bash script"
     echo "Exiting..."
     exit 1;
-elif [[ ! -f "$PRD_BASE_DIR/genprog_recompilation/genprog_decomp_ida.py" ]]; then
-    echo "Please clone the 'genprog_recompilation' repo into $PRD_BASE_DIR"
+elif [[ ! -f "$PART_DECOMP_DIR/genprog_decomp_ida.py" ]]; then
+    echo "Please ensure the 'partial_decompilation' repo is cloned into $PRD_BASE_DIR"
     echo "Cannot continue, as this repo houses the decompilation scripts"
     echo "Exiting..."
     exit 1
@@ -120,7 +121,7 @@ for i in ${mycbs[*]}; do
     x_list=""
     for j in $f; do 
         echo "$i,"$(realpath $bin_dir/$i)",$j" > $dest/$i.target_list.$x;
-        python3 $PRD_BASE_DIR/genprog_recompilation/genprog_decomp_ida.py --target_list $dest/$i.target_list.$x --ouput_directory $dest --scriptpath $PRD_BASE_DIR/genprog_recompilation/get_ida_details.py |& tee $dest/ida.$i.$x.log;
+        python3 $PART_DECOMP_DIR/genprog_decomp_ida.py --target_list $dest/$i.target_list.$x --ouput_directory $dest --scriptpath $PART_DECOMP_DIR/get_ida_details.py |& tee $dest/ida.$i.$x.log;
         if [[ -e "$dest/$i" ]]; then 
             mv -v $dest/$i $dest/$i.$x
             x_list=$x_list" $x"
@@ -165,8 +166,8 @@ for i in ${mycbs[*]}; do
     ln -sf $(realpath  $CGC_CB_DIR/build32/challenges/$i/poller) $dest/$i/poller;
     for x in $x_list; do
         #echo "${i},$PWD/$dest,"$(cat $dest/$i/${i}_funcstubs) > $dest/${i}/x
-        #echo "python3 $PRD_BASE_DIR/genprog_recompilation/asm_fitter.py --target_list $dest/$i/x --target_directory $dest "
-        #python3 $PRD_BASE_DIR/genprog_recompilation/asm_fitter.py --target_list $dest/$i/x --target_directory $dest
+        #echo "python3 $PART_DECOMP_DIR/asm_fitter.py --target_list $dest/$i/x --target_directory $dest "
+        #python3 $PART_DECOMP_DIR/asm_fitter.py --target_list $dest/$i/x --target_directory $dest
         if [[ -e $dest/$i/src.$x/${i}_funcstubs ]] ; then 
             func_stubs=$(cat $dest/$i/src.$x/${i}_funcstubs)
             pushd $dest/${i} > /dev/null

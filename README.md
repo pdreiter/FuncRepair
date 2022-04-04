@@ -1,7 +1,7 @@
 # FuncRepair
 function-based PRD (Partial Recompilation and Binary Rewriting) scripts for use with BinREPARED (a binary Automated Program Repair Framework)
 
-For PRD decompilation support, see git submodule `genprog_recompilation`
+For PRD decompilation support, see git submodule `partial_decompilation`
 
 ## Pre-requisite tools
 * IDA - this is a proprietary decompiler, please link your ida decompiler to this directory: i.e. ln -sf \$IDADIR ida

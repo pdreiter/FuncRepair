@@ -64,6 +64,7 @@ run_reg() {
       if (( $fail_fast )) ; then
           echo -e "[$i] status $x => $val $TEST TEST!";
           echo "EXITING EARLY Due to failures!"
+          echo -e "Returning 1\n"
           exit -1;
       fi;
       fi;
