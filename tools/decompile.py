@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, subprocess
+import os, sys, subprocess
 
 from prdtools import elf,ghidra_decomp
 
@@ -67,7 +67,7 @@ def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log,decompdir):
 
     if len(sym_fns)==0:
         print(f"ERROR: no functions to process")
-        import sys; sys.exit(-1)
+        sys.exit(-1)
     #if strip and '.strip' not in prog:
     #    prog=elf.strip_binary(prog)
     append=""
@@ -99,7 +99,7 @@ def call_hexrays(prog,funcs,hexrays_path,target,decomp_out,log,decompdir):
 
 
 if __name__ == "__main__":
-    import os,sys,argparse
+    import argparse
     parser=argparse.ArgumentParser()
     parser.add_argument("-f","--func-name","--func_name",dest="funcs",
                         metavar='N',nargs="+",help="Functions to decompile",
@@ -141,6 +141,8 @@ if __name__ == "__main__":
         bin_=args.prog if args.strip else sprog
         for f in args.funcs:
             outfile=None if not args.decompdir else f"{args.decompdir}/{id_}/{f}-ghidra.c"
+            if outfile and not os.path.exists(os.path.dirname(outfile)):
+                os.makedirs(os.path.dirname(outfile))
             ghidra_decomp.ghidra_decompile(dir_,id_,bin_,f,out_=outfile,stdout=True)
         
     elif not args.indep:
