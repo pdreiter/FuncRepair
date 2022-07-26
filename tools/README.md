@@ -38,7 +38,7 @@ NOTE: While GenProg can be run in parallel, Prophet cannot due to tmpdir conflic
 	2. Screen function list by byte size (or instruction size)
 	3. Calculate suspiciousness metrics
 	4. Generate RankAggreg R-script
-	./cgfl_finish.py --top-k-percent <TOP_K=0.35> --r-out <RSCRIPT_OUTDIR> --exe <EXE> --lib <LIBSOS> --src <SRC_DIR> --results $outdir --byte-min <BYTE_MIN_VAL>
+	./prdtools/cgfl_finish.py --top-k-percent <TOP_K=0.35> --r-out <RSCRIPT_OUTDIR> --exe <EXE> --lib <LIBSOS> --src <SRC_DIR> --results $outdir --byte-min <BYTE_MIN_VAL>
 4. Aggregate ranks through RankAggreg R-script:
 	<RSCRIPT_OUTDIR>/<EXE>.r
 

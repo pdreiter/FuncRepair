@@ -214,14 +214,14 @@ if (( ${EXECUTE[1]} == 1 )); then
         if [[ ! -z $MIN_INSTRS_FN ]]; then
              instr+=" --instr-min $MIN_INSTRS_FN"
         fi
-        echo "$TOOL_DIR/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
+        echo "$TOOL_DIR/prdtools/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/build/include/libcgc.so \
         --src $BASE_DIR/challenges/$cb/src \
         --results $processed_out \
         --byte-min $MIN_BYTES_FN \
         $instr"
 
-        $TOOL_DIR/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
+        $TOOL_DIR/prdtools/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/$cb/build/include/libcgc.so \
         --src $BASE_DIR/challenges/$cb/src \
         --results $processed_out \
