@@ -1,5 +1,6 @@
 #!/bin/bash
 
+SCRIPTDIR=$(dirname -- $(realpath -- ${BASH_SOURCE[0]}))
 CB=$1
 FUNC_NUM=$2
 DIR_ID=$3
@@ -18,7 +19,7 @@ fi
 mkdir -p $DECOMP_OUTPUT $DECOMP_RECOMPILE $DECOMP_LOGS
 for TARGET in ${TARGETS[@]}; do
   id=$(echo $TARGET | cut -d "." -f 3)
-  ./rerun_recomp_decomp-g.bash $CB $id $DECOMP_TARGETS $DECOMP_OUTPUT $DECOMP_RECOMPILE $DECOMP_LOGS 
+  $SCRIPTDIR/rerun_recomp_decomp.bash $CB $id $DECOMP_TARGETS $DECOMP_OUTPUT $DECOMP_RECOMPILE $DECOMP_LOGS 
   echo "[Completed][$CB] Function $id"
 done
 

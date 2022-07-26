@@ -714,7 +714,7 @@ class Throw(object):
             o=open(gen_rep_log[1],"wb")
             o.write(bytes(seed,'utf-8'))
         self.procs, watcher = challenge_runner.run(challenges, self.timeout, seed, self.log,\
-                               (os.environ.get('ENABLE_FIXES',None) is not None) )
+                               True )
 
         # Start a thread to buffer data from the challenges' stdout
         buf_thread = threading.Thread(target=self.buffer_pipe_data, args=(self.procs[0].stdout,))

@@ -53,31 +53,6 @@ else
 fi
 
 
-if [[ ! -z "$VIRTUAL_ENV" && $VIRTUAL_ENV != "$PRD_BASE_DIR/prd-env" ]]; then
-  echo "Another Virtual Environment [ $VIRTUAL_ENV ] is set up."
-  echo "Please 'deactivate' and rerun to continue"
-  cd $INVOKEDIR
-  return 1
-fi
-if [ -z $VIRTUAL_ENV ]; then 
-   if python3 -m venv prd-env; then
-     echo "python3 virtual environment is installed"
-     source prd-env/bin/activate
-     echo "Virtual environment @ $VIRTUAL_ENV is activated."
-     echo "Installing requirements" 
-	 pip install wheel
-     pip install -r requirements.txt
-     #pip install -c constraints.txt
-   else
-     echo "Need python3 virtual environment installed"
-     echo "Please install 'python3-venv'"
-     echo "Ubuntu install example: sudo apt-get install python3-venv"
-     cd $INVOKEDIR
-     return 1
-   fi
-
-fi
-
 libinstall_dir=$PRD_BASE_DIR/stdlib-src
 
 glibc_ver="2.31"
@@ -121,13 +96,15 @@ fi
    #r2pm -ci r2ghidra
 #fi
 
-  if [[ ! -e "$PRD_BASE_DIR/ghidra_10.0.1_PUBLIC" ]]; then
-	pushd $PRD_BASE_DIR
-      wget -c https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.0.1_build/ghidra_10.0.1_PUBLIC_20210708.zip
-      unzip ghidra_10.0.1_PUBLIC_20210708.zip
-	popd
-  fi
-export GHIDRA_TOOL_DIR=$(realpath ./ghidra_10.0.1_PUBLIC)
+GHIDRA_RELEASE="10.1.4"
+GHIDRA_RELEASE_DATE="20220519"
+if [[ ! -e "$PRD_BASE_DIR/ghidra_${GHIDRA_RELEASE}_PUBLIC" ]]; then
+    pushd $PRD_BASE_DIR
+      wget -c https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_${GHIDRA_RELEASE}_build/ghidra_${GHIDRA_RELEASE}_PUBLIC_${GHIDRA_RELEASE_DATE}.zip -O ghidra_${GHIDRA_RELEASE}_PUBLIC.zip
+      unzip ghidra_${GHIDRA_RELEASE}_PUBLIC.zip
+    popd
+fi
+export GHIDRA_TOOL_DIR=$(realpath ./ghidra_${GHIDRA_RELEASE}_PUBLIC)
 export GHIDRA_HEADLESS="${GHIDRA_TOOL_DIR}/support/analyzeHeadless"
 
 if [[ ! -d "${libinstall_dir}/dietlibc" ]]; then
@@ -215,6 +192,31 @@ elif [[ ! -d $PRD_BASE_DIR/R_PACKAGES ]]; then
     R CMD INSTALL -l $R_LIBS $(basename -- $GTOOL)
     R CMD INSTALL -l $R_LIBS $(basename -- $RANK)
   popd &> /dev/null
+fi
+
+if [[ ! -z "$VIRTUAL_ENV" && $VIRTUAL_ENV != "$PRD_BASE_DIR/prd-env" ]]; then
+  echo "Another Virtual Environment [ $VIRTUAL_ENV ] is set up."
+  echo "Please 'deactivate' and rerun to continue"
+  cd $INVOKEDIR
+  return 1
+fi
+if [ -z $VIRTUAL_ENV ]; then 
+   if python3 -m venv prd-env; then
+     echo "python3 virtual environment is installed"
+     source prd-env/bin/activate
+     echo "Virtual environment @ $VIRTUAL_ENV is activated."
+     echo "Installing requirements" 
+	 pip install wheel
+     pip install -r requirements.txt
+     #pip install -c constraints.txt
+   else
+     echo "Need python3 virtual environment installed"
+     echo "Please install 'python3-venv'"
+     echo "Ubuntu install example: sudo apt-get install python3-venv"
+     cd $INVOKEDIR
+     return 1
+   fi
+
 fi
 
 cd $INVOKEDIR

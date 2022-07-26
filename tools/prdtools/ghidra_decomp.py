@@ -62,6 +62,7 @@ def ghidra_decompile(dir_,id_,bin_,symbol,out_,stdout):
     ghidra_log=f"ghidra.{prefix}.log"
     fstdout=open(ghidra_log,"w");
     p=subprocess.run(cmd,stdout=fstdout,stderr=subprocess.STDOUT,shell=True)
+    
     if t:
         x=clean_code(t.read())
         print(x)

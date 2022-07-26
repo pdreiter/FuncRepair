@@ -44,7 +44,7 @@ def run(challenges, timeout, seed, logfunc, enable_fixes=False):
     if os.environ.get('LD_BIND_NOW',None) is not None:
 	    cb_env['LD_BIND_NOW']='1'
 
-    if enable_fixes:
+    if enable_fixes or (os.environ.get('ENABLE_FIXES',None) is not None):
 	    cb_env['ENABLE_FIXES']='1'
 
     # This is the first fd after all of the challenges
