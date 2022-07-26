@@ -305,7 +305,7 @@ class elf_file:
             return dump
 
 
-def get_min_set(elf_info:elf_file,min_inst,min_bytes,min_AND):
+def get_min_set(elf_info:elf_file,min_inst,min_bytes,min_AND:bool=False):
     x,x1,x2=(None,None,None)
     if min_inst:
         x1=elf_info.get_functions_min_instr(min_inst)

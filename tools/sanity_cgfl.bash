@@ -278,8 +278,8 @@ run_reg() {
    #   cg_annotate $EXE $log_dir $TEST $FUNC_RE $LIBFUNC_RE
    #done
    #generate_all_dict $log_dir
-   #echo "$script_dir/calc_susp_pp.py --ext \".dict\" --in \"$log_dir\" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log  2> $log_dir/$EXE.rscript.log" >> $log_dir/cgfl.bash
-   #$script_dir/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
+   #echo "$script_dir/prdtools/calc_susp_pp.py --ext \".dict\" --in \"$log_dir\" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log  2> $log_dir/$EXE.rscript.log" >> $log_dir/cgfl.bash
+   #$script_dir/prdtools/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K --log susp-fn.log > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
    return $ret
 }
 

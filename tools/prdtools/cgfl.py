@@ -162,10 +162,51 @@ class cgfl:
         for f in self.all_dict.keys():
             self.all_dict[f]=0
 
+
+def get_satisfying_symbols(binelf,exclude_me_:str,mininst:int=None,minbytes:int=1,minAND:bool=False,
+	debug:bool=False):
+	satisfied=None
+        minset=elf.get_min_set(binelf,min_inst=mininst,min_bytes=minbytes,min_AND=minAND)
+	exclude_re=re.compile(r'\b('+exclude_me_+r')\b')
+        _functions=minset
+        if not _functions or len(_functions)<1:
+            print("ERROR!  We have no min set of functions! Why?")
+            import sys; sys.exit(-1)
+        elif debug:
+            for sym,demangled in _functions:
+                print(f"symbol:{sym}  => demangled:{demangled}")
+            
+        output="Satisfying symbols:"
+        for sym,demangled in _functions:
+            y=exclude_re.search(demangled)
+            if not y:
+                if not satisfied:
+                    satisfied=list()
+                xf=demangled.split("(",1)[0]
+                xf=re.sub("^\s*const\s*","",xf)
+                satisfied.append((xf,sym))
+                output+=f"- {sym}"+"\n"
+	return satisfied
+
             
 
 
 
+# initialize symbols we'd like to screen by default
+init_re='__frame_dummy_init_array_entry|_init|__init_array_end|__init_array_start|__libc_csu_init|mutex_init'
+fini_re='__do_global_dtors_aux_fini_array_entry|_fini|__libc_csu_fini'
+thunk_re='__x86.get_pc_thunk.[abcds][ix]|__cxa_pure_virtual'
+reg_re='deregister_tm_clones|register_tm_clones'
+glob_re='__do_global_dtors_aux|__do_global_dtors_aux_fini_array_entry|_dl_relocate_static_pie'
+start_re='_start|__init_array_start|start'
+alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
+L_re='\.L\d+'
+globals_re='((cgc__?|c_?)?(v_sprintf_s|__moddi3|__divdi3|str_to_ulong|free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strncat|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
+specific_issue_re='((cgc__?)(gb_new|gb_reset))'
+
+syms2exclude_=[globals_re,init_re,fini_re,thunk_re,reg_re,
+                     glob_re,start_re,alloc_re,L_re,specific_issue_re]
+exclude_="|".join(syms2exclude_)
 
 if __name__ == "__main__":
     import os,copy,argparse,sys,re
@@ -178,19 +219,6 @@ if __name__ == "__main__":
     debug=False
     default_log=None
 
-    init_re='__frame_dummy_init_array_entry|_init|__init_array_end|__init_array_start|__libc_csu_init|mutex_init'
-    fini_re='__do_global_dtors_aux_fini_array_entry|_fini|__libc_csu_fini'
-    thunk_re='__x86.get_pc_thunk.[abcds][ix]|__cxa_pure_virtual'
-    reg_re='deregister_tm_clones|register_tm_clones'
-    glob_re='__do_global_dtors_aux|__do_global_dtors_aux_fini_array_entry|_dl_relocate_static_pie'
-    start_re='_start|__init_array_start|start'
-    alloc_re='((cgc_)?(allocate_buffer|allocate_new_blk|allocate_span|filter_alloc|large_alloc|malloc_free|malloc_huge|run_alloc|small_alloc|small_alloc_run|tiny_alloc))'
-    #L_re='\.L[[:digit:]]+'
-    L_re='\.L\d+'
-    globals_re='((cgc__?|c_?)?(v_sprintf_s|__moddi3|__divdi3|str_to_ulong|free|malloc|calloc|realloc|free|malloc_huge|allocate_new_blk|small_free|free_huge|memcpy|memset|memcmp|memchr|sprintf|snprintf|vsnprintf|vsprintf|vsfprintf|vprintf|vfprintf|fdprintf|printf|fflush|large_alloc|large_free|tiny_alloc|small_alloc|small_free|small_unlink_free|malloc_alloc|chunk_to_ptr|malloc_free|fread|ssmalloc|freaduntil|recvline|putc|recv|write|fwrite|memmove|coalesce|strcmp|strncmp|strchr|strnchr|strncat|strcat|bzero|itoa|atoi|atof|ftoa|strn?cpy|getc|strtol|strn?len|strsep|exit|is(alnum|alpha|ascii|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|to(ascii|lower|upper)|randint))'
-    specific_issue_re='((cgc__?)(gb_new|gb_reset))'
-    exclude_me="|".join([globals_re,init_re,fini_re,thunk_re,reg_re,
-                         glob_re,start_re,alloc_re,L_re,specific_issue_re])
 
  
     def get_args():
@@ -240,6 +268,7 @@ if __name__ == "__main__":
     get_syms_cmd="{} --exe {} --json-out {} {}"
     satisfied=None
     from prdtools import elf
+    exclude_me=exclude_
     if args.lib:
         import subprocess,shlex
         libelf=elf.elf_file(binary_path=args.lib,symbol_info=False,debug=False)
@@ -316,7 +345,7 @@ if __name__ == "__main__":
     cgfl_o.write_raw_dicts()
     cgfl_o.write_screened_dicts()
 
-    #$script_dir/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K  > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
+    #$script_dir/prdtools/calc_susp_pp.py --ext ".dict" --in "$log_dir" --out $outdir --all_rank --pickle --standardize --print --r_input --r-out $r_dir --cb $EXE --top-k-percent $TOP_K  > $log_dir/$EXE.calc_susp_pp.log 2> $log_dir/$EXE.rscript.log
     if args.results and args.r_out and args.top_k:
         exe_dir=os.path.dirname(args.exe)
         calc_exe="{} --ext '.dict' --in {} --out {} --all_rank --pickle --standardize --print --r_input --r-out {} --cb {} --top-k-percent {} --debug {} --log {} {}".format(

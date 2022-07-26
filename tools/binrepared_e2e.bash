@@ -204,7 +204,7 @@ if (( ${EXECUTE[1]} == 1 )); then
     fi
     if [[ ! -e $r_out/$cb.r  ]] ; then 
         #echo "Processing CGFL with $TOP_K_PERCENT as rank"
-        #$TOOL_DIR/calc_susp_pp.py --ext ".dict" --in "$processed_out" --out $cb_build --all_rank \
+        #$TOOL_DIR/prdtools/calc_susp_pp.py --ext ".dict" --in "$processed_out" --out $cb_build --all_rank \
         #  --pickle --standardize --print --r_input --r-out $r_out \
         #  --cb $cb --top-k-percent $TOP_K_PERCENT > $processed_out/$cb.calc_susp_pp.log 2> $processed_out/$cb.rscript.log
         instr=""
@@ -214,14 +214,14 @@ if (( ${EXECUTE[1]} == 1 )); then
         if [[ ! -z $MIN_INSTRS_FN ]]; then
              instr+=" --instr-min $MIN_INSTRS_FN"
         fi
-        echo "$TOOL_DIR/prdtools/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
+        echo "$TOOL_DIR/prdtools/cgfl.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/build/include/libcgc.so \
         --src $BASE_DIR/challenges/$cb/src \
         --results $processed_out \
         --byte-min $MIN_BYTES_FN \
         $instr"
 
-        $TOOL_DIR/prdtools/cgfl_finish.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
+        $TOOL_DIR/prdtools/cgfl.py --top-k-percent $TOP_K_PERCENT --r-out $r_out --exe $cb_build/$cb \
         --lib $cb_build/$cb/build/include/libcgc.so \
         --src $BASE_DIR/challenges/$cb/src \
         --results $processed_out \
