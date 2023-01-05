@@ -1,7 +1,7 @@
 # Example include file
-BIN:=CGCBINARYEXE
+BIN:=<CGCBINARYEXE>
 DETOUR_BIN ?= $(BIN).trampoline.bin
-MYSRC ?= decompiled_source.c
+MYSRC ?= <RECOMP_SRC>.c
 MYREP ?= repair.c
 DETOUR_PREFIX := det_
 #DETOUR_DEFS := <fn0>:<fn0_symbol_dependencies> <fn1>:<fn1_symbol_dependencies>

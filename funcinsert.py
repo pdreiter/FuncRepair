@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 """
 program: {0}
 purpose: extract set of functions from binary and patch with external input file
@@ -25,6 +25,7 @@ default_cflags="-static-pie -fPIC -Wl,-pie,--no-dynamic-linker,--eh-frame-hdr,-z
 default_hook_cflags=" {} ".format(default_cflags)
 RENAME_FUNCTION=False
 
+PLTEBX_SUPPORT=False
 #default_hook_cflags='-fPIC -nostdlib -nodefaultlibs -fno-builtin -static -fno-plt -L ./static_libs -shared'
 override_so = True
 with open(default_log,"w") as f:
@@ -85,15 +86,18 @@ def parse_arguments():
     parser.add_argument('--external-funcs',dest='externFns',action="append",
                         default=None,
                         help='format => patchFunction:<comma-separated list of external funcs> Modify function JUMP with Comma separated list of external functions whose addresses will be pushed onto the stack consistent with the call order as if the function was defined with void pointers of this same order [THIS MEANS THAT THIS ORDER MATTERS!]')
-
+    parser.add_argument('--plt-ebx-support',dest='pltebx',action='store_const',const=True,default=False,
+                        help="Enabled PLT call support from detour to original binary by using EBX"
+                       )
 
     parser.add_argument('--do-not-override-so', dest='so_override', action='store_const', const=False, default=True)
     #parser.add_argument('--just-seg', dest='just_seg', action='store_const', const=True, default=False)
     parser.add_argument('--debug', dest='debug', action='store_const', const=True, default=False)
     args = parser.parse_args()
-    global debug
+    global debug,PLTEBX_SUPPORT
     #global just_seg
     debug = args.debug
+    PLTEBX_SUPPORT=args.pltebx
     #just_seg = args.just_seg
     return args
 
@@ -217,11 +221,13 @@ def change_function_content(binary_to_update:lief.Binary,
     their_fn = binary_to_update.section_from_virtual_address(their_funcsym.value)
     address=their_funcsym.value+offset
     if their_funcsym.size < len(my_code):
-        print("ERROR: inserted code (size={l}bytes) will overrun {func_name} (size={their_funcsym.size}bytes)")
-        dprint("ERROR: inserted code (size={l}bytes) will overrun {func_name} (size={their_funcsym.size}bytes)")
+        l=len(my_code)
+        print(f"ERROR: inserted code (size={l}bytes) will overrun {func_name} (size={their_funcsym.size}bytes)")
+        dprint(f"ERROR: inserted code (size={l}bytes) will overrun {func_name} (size={their_funcsym.size}bytes)")
         dprint("original size: {}".format(their_funcsym.size))
         dprint("patch size: {}".format(len(my_code)))
         dprint("Overrun size: {}".format(len(my_code)-their_funcsym.size))
+        dprint(f"Not updating {func_name}.")
         return None,None
     return inject_code(binary_to_update,address,my_code)
 
@@ -252,6 +258,7 @@ def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=T
     print("hex val of rel_offset: {}".format(hex_addr.hex()))
     hex_string.extend(hex_addr)
     # push eax => 50
+    # push ebx => 53
     hex_string.extend(bytes.fromhex("50"))
     #hex_string.extend(bytes.fromhex("33c0"))
     #hex_string.extend(bytes.fromhex("50"))
@@ -295,6 +302,8 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        # pop off return address from stack
        # pop ecx => 59 => changing to edx because of a conflict with injecting into main
        # pop edx => 5a
+       # push ebx => 53
+       # pop ebx => 5b
        pop_ecx=bytearray.fromhex("59")
        pop_edx=bytearray.fromhex("5a")
        mov_ecx_into_eax=bytearray.fromhex("89c8")
@@ -335,6 +344,13 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
 
            #hex_string+=generate_void_ptr_push(address,func_to_update.value+cur_offset)
            #cur_offset=len(hex_string)+offset
+
+       if PLTEBX_SUPPORT:
+           # GCC library/plt workaround: pushing EBX onto the stack:
+           # push ebx => 53
+           # pop ebx => 5b
+           push_ebx=bytearray.fromhex("53")
+           hex_string.extend(push_ebx)
 
        # push ecx => 51 => changing to edx because of a conflict with injecting into main
        # push edx => 52
@@ -447,7 +463,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
        THIS ONLY WORKS WITH ORIGINAL FUNCTIONS THAT ARE LOCAL
     """
     their_fn = binary_to_update.get_symbol(bin_fn_name)
-    success = None
+    success = True
     extfncs = None if not ext_funcs else dict()
     final_note=None
     little_endian = True if binary_to_update.abstract.header.endianness == lief.ENDIANNESS.LITTLE else False
@@ -498,7 +514,7 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
         
         their_fn = binary_to_update.get_symbol(bin_fn_name)
         if ext_funcs:
-            mydecl=""
+            mydecl=" void* EBX," if PLTEBX_SUPPORT else ""
             mynotes=""
             myfunc=""
             requires_bind_now = False
@@ -511,26 +527,24 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
                            print("|WARNING!!! symbol '{}' is IMPORTED!".format(i))
                            print("| Please make sure '{}' is a ** type in '{}'".format(
                            i,patch_binary.name))
-                                
-                           xrelo=binary_to_update.concrete.get_relocation(i)
-                           address=xrelo.address
-                           # because the GOT ADDRESS requires the original .got table offset 
-                           # to be in %ebx and the patch_binary has its own .got table locally,
-                           # the following won't work
-                           #got_address=xrelo.address
-                           #plt_address=binary_to_update.get_content_from_virtual_address(got_address,4)
-                           ## subtract 6 from .got address, since it contains the next address after the PLT JMP
-                           #address=int.from_bytes(plt_address,byteorder='little')-6
+                           if PLTEBX_SUPPORT:
+                               plt_base=binary_to_update.concrete.get_section(".plt")
+                               print(f"| PLT_BASE => \nplt_base.offset={hex(plt_base.offset)} \nplt_base.file_offset={hex(plt_base.file_offset)}")
+                               print(f"plt_base.virtual_address={hex(plt_base.virtual_address)}")
+                               import_idx=-1
+                               for idx,ii in enumerate(binary_to_update.pltgot_relocations):
+                                   if ii.symbol.name==i:
+                                       import_idx=idx
+                                       break
+                               assert import_idx>=0
+                               reladdr=plt_base.offset+16*(import_idx+1)
+                               address=plt_base.virtual_address+16*(import_idx+1)
+                           else:
+                               xrelo=binary_to_update.concrete.get_relocation(i)
+                               address=xrelo.address
+                            
                        except Exception as e:
                            print("ERROR! symbol '{}' cannot be resolved!".format(i))
-                           #print(j)
-                           #print("binding : {}".format(j.binding))
-                           #print("exported : {}".format(j.exported))
-                           #print("information : {}".format(j.information))
-                           #print("type : {}".format(j.type))
-                           #print("value : {}".format(j.value))
-                           #print(binary_to_update.sections[j.shndx].name_idx)
-                           #print(binary_to_update.sections[j.shndx].type)
                            print(e)
                            import sys;sys.exit(1)
                        finally:
@@ -631,11 +645,15 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             my_fn_addr = segment.virtual_address + \
                          (my_fnsym.value-patch_segment_virtual_address)
             dprint("Relative offset from their function to patch function : {:04x}".format(my_fn_addr-their_fn.value))
-            change_function_to_jump(binary_to_update,func_name=renamed_fn,
+            ret=change_function_to_jump(binary_to_update,func_name=renamed_fn,
                                     dest_address=(my_fn_addr-their_fn.value),
                                     func_list=ext_funcs,func_dict=extfncs,
                                     offset=bin_fn_offset,reg=reg
                                     )
+            
+            success = (ret[1] is not None) and success
+            if not success:
+                return success,binary_to_update,segment
             dprint("{:08x} => relative jump address [func.value] {:08x}".format(my_fn_addr,my_fn_addr-their_fn.value))
             dprint("{:08x} => relative jump address [func.value] {:08x} [their function value: {:08x}]".format(my_fn_addr,my_fn_addr-their_fn.value,their_fn.value))
             dprint("virtual address {:08x} ".format(my_fn_addr))
@@ -719,18 +737,21 @@ def patch_func_with_jump_to_added_segment(binary_to_update:lief.Binary,patch_bin
             print("Patch input file is not DYNAMIC, RELOCATABLE, or EXECUTABLE")
             print("Cannot support this patch type")
             sys.exit(-1);
-        change_function_to_jump(binary_to_update,func_name=renamed_fn,
+        ret=change_function_to_jump(binary_to_update,func_name=renamed_fn,
                                 dest_address=(my_fn_addr-their_fn.value),
                                 func_list=ext_funcs,func_dict=extfncs,
                                 offset=bin_fn_offset,reg=reg
                                 )
+        success = (ret[1] is not None) and success
+        if not success:
+            return success,binary_to_update,segment
         dprint("content '{}' @ {:08x} ]".format(
                               bytearray(binary_to_update.get_content_from_virtual_address(segment.virtual_address,28)).hex(),
                               segment.virtual_address))
         dprint("content '{}' @ {:08x} ]".format(
                               bytearray(binary_to_update.get_content_from_virtual_address(my_fn_addr,28)).hex(),
                               my_fn_addr))
-        success = True
+        
     else:
         if not their_fn.is_function:
             print("WARNING: function {bin_fn_name} isn't a function in binary to patch.")

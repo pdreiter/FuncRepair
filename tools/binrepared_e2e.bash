@@ -283,7 +283,7 @@ if (( ${EXECUTE[2]} == 1 )); then
             din="$decomp_test/in"
             dout="$decomp_test/out.$i"
             mkdir -p $din $dout
-            $TOOL_DIR/decompile.py -p $cb_build/$cb --target-list $din/$cb.$i.target_list \
+            $TOOL_DIR/prdtools/decompile.py -p $cb_build/$cb --target-list $din/$cb.$i.target_list \
             -l $dout/multidecomp.log -o $dout -s $DECOMP_TOOL_DIR -f $f
             #echo -n "$cb,$cb_build/$cb,$f" > $din/$cb.$i.target_list
             #python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \

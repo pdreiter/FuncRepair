@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
+import sys,os,re,glob,copy
+from prdtools import elf
 
+script_dir=os.path.dirname(os.path.abspath(__file__))
 
 class cgfl:
     def __init__(self,cb=None,src=None,inputdir=None,outputdir=None,valid_funcs=None,debug=False):
@@ -8,7 +11,6 @@ class cgfl:
         self.cg_in_dir=inputdir
         self.cg_out_dir=outputdir
         self.debug=debug
-        import os
         x="{}/tmp".format(self.cg_out_dir)
         if not os.path.exists(x):
              os.makedirs(x)
@@ -20,7 +22,6 @@ class cgfl:
         self.demangled_funcs=self.get_demangled(valid_funcs)
         #for i in valid_funcs:
         #    print(f" - '{i}'")
-        import glob
         self.test_files=None
         if self.cg_out_dir:
             test_files=glob.glob("{}/*.cg.out".format(self.cg_out_dir))
@@ -40,7 +41,6 @@ class cgfl:
 
     def annotate(self):
         if not self.test_files or len(self.test_files)==0:
-            import sys
             print("ERROR: No valid CGFL data from {} test runs!!".format(self.cb),file=sys.stderr)
             sys.exit(-1)
         for test,cg_out in self.test_files.items():
@@ -127,7 +127,6 @@ class cgfl:
     def screen_dicts(self,exclude):
         screen_="({})".format(exclude)
         screen_re=re.compile(r"\b"+screen_+r"\b")
-        import copy
         orig_s=copy.deepcopy(self.screened_data)
         screened=list()
         for y in orig_s.keys():
@@ -164,29 +163,30 @@ class cgfl:
 
 
 def get_satisfying_symbols(binelf,exclude_me_:str,mininst:int=None,minbytes:int=1,minAND:bool=False,
-	debug:bool=False):
-	satisfied=None
-        minset=elf.get_min_set(binelf,min_inst=mininst,min_bytes=minbytes,min_AND=minAND)
-	exclude_re=re.compile(r'\b('+exclude_me_+r')\b')
-        _functions=minset
-        if not _functions or len(_functions)<1:
-            print("ERROR!  We have no min set of functions! Why?")
-            import sys; sys.exit(-1)
-        elif debug:
-            for sym,demangled in _functions:
-                print(f"symbol:{sym}  => demangled:{demangled}")
-            
-        output="Satisfying symbols:"
+    debug:bool=False):
+    satisfied=None
+    minset=elf.get_min_set(binelf,min_inst=mininst,min_bytes=minbytes,min_AND=minAND)
+    exclude_re=re.compile(r'\b('+exclude_me_+r')\b')
+    _functions=minset
+    if not _functions or len(_functions)<1:
+        print("ERROR!  We have no min set of functions! Why?")
+        print(f"Functions => {_functions}")
+        sys.exit(-1)
+    elif debug:
         for sym,demangled in _functions:
-            y=exclude_re.search(demangled)
-            if not y:
-                if not satisfied:
-                    satisfied=list()
-                xf=demangled.split("(",1)[0]
-                xf=re.sub("^\s*const\s*","",xf)
-                satisfied.append((xf,sym))
-                output+=f"- {sym}"+"\n"
-	return satisfied
+            print(f"symbol:{sym}  => demangled:{demangled}")
+        
+    output="Satisfying symbols:"
+    for sym,demangled in _functions:
+        y=exclude_re.search(demangled)
+        if not y:
+            if not satisfied:
+                satisfied=list()
+            xf=demangled.split("(",1)[0]
+            xf=re.sub("^\s*const\s*","",xf)
+            satisfied.append((xf,sym))
+            output+=f"- {sym}"+"\n"
+    return satisfied
 
             
 
@@ -209,7 +209,7 @@ syms2exclude_=[globals_re,init_re,fini_re,thunk_re,reg_re,
 exclude_="|".join(syms2exclude_)
 
 if __name__ == "__main__":
-    import os,copy,argparse,sys,re
+    import argparse
     from datetime import datetime
     dateinfo=datetime.now().strftime("%d%m%Y%I%M%S")
     
@@ -333,7 +333,7 @@ if __name__ == "__main__":
 
     if not satisfied or len(satisfied)<1:
         print("ERROR!  We have no valid set of functions! Why?")
-        import sys; sys.exit(-1)
+        sys.exit(-1)
     if args.debug:
         ssat=",\n".join([f"{s[0]} [s{1}]" for s in satisfied])
         print(f"These functions satisfy: {ssat}")

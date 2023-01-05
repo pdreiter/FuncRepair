@@ -49,8 +49,10 @@ class elf_file:
             import os
             self.exe=os.path.basename(self.bin)
             self.syms,self.demangled_syms_lut,self.mangled_syms_lut=self.get_symbols()
-            local_syms=set([ x['name'] for s in ['t','T'] if s in self.syms.keys() for x in self.syms[s] ])
+            local_syms=set([ x['shortname'] for s in ['t','T'] if s in self.syms.keys() for x in self.syms[s] if not x['is_glibc'] ])
+            glibc_syms=set([ x['shortname'] for s in ['t','T'] if s in self.syms.keys() for x in self.syms[s] if x['is_glibc'] ])
             self.local_symbols= [(x,self.demangled_syms_lut[x]) for x in list(local_syms)]
+            self.glibc_symbols= [(x,self.demangled_syms_lut[x]) for x in list(glibc_syms)]
             #print("SYMBOLS: {}".format(str(" ".join(self.local_symbols))))
             self.characterize=dict()
             self.dprint("{:30s} {:20s} {:20s} {:20s}".format("Function","Num instrs","Num bytes","Num Calls"))
@@ -66,8 +68,8 @@ class elf_file:
         """
         for f,dmf in self.local_symbols:
             import sys
-            print("- {}".format(f),file=sys.stderr)
             objdump=self.obtain_fn_objdump(f)
+            
             if not objdump:
                 self.failed_syms.append((f,dmf))
                 continue
@@ -102,9 +104,21 @@ class elf_file:
                                      'num_calls':len([x for x in objdump if "\tcall " in x]),
                                      'num_bytes':end_address-start_address,
                                      'offset':start_address,
-                                     #'objdump':objdump
+                                     'plt_index':None
                                    }
             self.dprint("{:30s} {:20s} {:20s} {:20s}".format(f,str(len(objdump)),str(self.characterize[f]['num_bytes']),str(self.characterize[f]['num_calls'])))
+        for f,dmf in self.glibc_symbols:
+            addr,plt_offset=self.obtain_pltoffset_objdump(f)
+            self.characterize[f]={
+                                     'demangled_name':dmf,
+                                     'num_instructions':None,
+                                     'num_calls':None,
+                                     'num_bytes':None,
+                                     'offset':addr,
+                                     'plt_index':(plt_offset/16)
+                                 }
+            self.dprint("{:30s} {:20s} {:20s} {:20s}".format(f,"PLT (addr,plt index)",addr,plt_offset/16))
+            
     
     def is_mangled(self,mangled:str):
         return mangled in list(self.demangled_syms_lut.keys())
@@ -126,6 +140,9 @@ class elf_file:
                 return self.demangled_syms_lut[dm]
         return None
 
+    def get_local_symbols(self):
+        return self.local_symbols
+
     def get_mangled_symbol(self,demangled:str):
         search_re=re.compile(r"\b"+f"{demangled}"+r"\b")
         for dm in self.mangled_syms_lut.keys():
@@ -141,6 +158,8 @@ class elf_file:
     def get_functions_min_bytes(self,min_bytes):
         min_set=set()
         for fn in self.characterize.keys():
+            if self.characterize[fn]['num_bytes'] is None:
+                continue
             if int(self.characterize[fn]['num_bytes'])>=int(min_bytes):
                 f=(fn,self.characterize[fn]['demangled_name'])
                 min_set.add(f)
@@ -149,6 +168,8 @@ class elf_file:
     def get_functions_min_instr(self,min_instr):
         min_set=set()
         for fn in self.characterize.keys():
+            if self.characterize[fn]['num_instructions'] is None:
+                continue
             if int(self.characterize[fn]['num_instructions'])>=int(min_instr):
                 f=(fn,self.characterize[fn]['demangled_name'])
                 min_set.add(f)
@@ -176,18 +197,32 @@ class elf_file:
            'failed_symbols':self.failed_syms,
            'symbols':self.syms,
            'locals':self.local_symbols,
+           'glibcs':self.glibc_symbols,
            'info':self.characterize,
            'mangled_lut':self.mangled_syms_lut,
            'demangled_lut':self.demangled_syms_lut,
            }
         with open(json_outf,'w') as outFile:
             import json
-            json.dump(x,outFile)
+            json.dump(x,outFile,indent=4)
             outFile.close()
+
+    def obtain_plt_objdump(self):
+        cmd=["/usr/bin/objdump","-D","-j",".plt",self.bin]
+        proc = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        cout,cerr=proc.communicate()
+        if proc.returncode:
+            import sys
+            print("Error when performing 'objdump -D {}'".format(self.bin),file=sys.stderr)
+            print(cerr.decode('ascii'),file=sys.stderr)
+            print("Exiting.",file=sys.stderr)
+            sys.exit(-1)
+        return cout.decode('ascii')
 
     def obtain_objdump(self):
         #cmd=["/usr/bin/objdump","-D","-C",self.bin]
         cmd=["/usr/bin/objdump","-D",self.bin]
+        
         proc = subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         cout,cerr=proc.communicate()
         if proc.returncode:
@@ -221,12 +256,14 @@ class elf_file:
             self.dprint(x)
             symadd=x[0:8]
             symtype=x[9:10]
-            symname=x[11:len(x)]
+            full_symname=x[11:len(x)]
             if x[8]!=" ":
                 print("ERROR!! Looks like a 64b binary\nExiting.")
                 import sys;sys.exit(-1);
-                
-                
+            is_glibc= "GLIBC" in full_symname
+            symname=full_symname
+            if is_glibc:
+                symname=x[11:len(x)].split('@',1)[0]
             ltype=symbol_dict.get(symtype,None)
             if not ltype:
                 symbol_dict[symtype]=list()
@@ -238,17 +275,24 @@ class elf_file:
             out = subprocess.check_output(" ".join(cmd),shell=True)
             dem = out.decode('ascii').rstrip()
             self.dprint(f"{symtype} : {symname} => {dem}")
-            symbol_dict[symtype].append({'name':symname,'address':symadd,'type':symtype,'demangled':dem})
+            symbol_dict[symtype].append({'name':full_symname,'shortname':symname,'address':symadd,'type':symtype,'demangled':dem,'is_glibc':is_glibc})
             mangled_syms[dem]=symname
             demangled_syms[symname]=dem
         return symbol_dict,demangled_syms,mangled_syms
 
     def get_func_disasm(self,objdump,func):
-        start_regex="<"+func+">:"
+        
+        count=0;
+        # sometimes function names seem to be enclosed in quotes        
+        if (func[0] in ["'",'"']) and (func[-1] in ["'",'"']) and (func[0]==func[-1]):
+            func=func[1:-1]
+            
+        start_regex=f"<{func}>:"
         end_regex="(\s+ret\s*$|\.\.\.)"
         func_objdump_list=list()
         objdump_log = objdump.split('\n')
-        if len(objdump_log)>0:
+        assert len(objdump_log)>0
+        if len(objdump)>0:
             (start,check_last)=(0,0)
             i=0; found=False
             #with open(objdump_log,'r') as f:
@@ -259,8 +303,12 @@ class elf_file:
                 #    print("ERROR: reached end of objdump without finding function '"+func+"'")
                 #    #f.close();
                 #    #sys.exit(-1);
+                # let's skip over if we're looking for the start and we don't have a line
+                if not (start or check_last) and not re.search(r"<\S+>:",line):
+                    continue
                 if re.search(start_regex,line):
                     start=1
+                    
                 if check_last:
                     check_last=0
                     if re.match("\s*$",line):
@@ -274,6 +322,29 @@ class elf_file:
                 if start or check_last:
                     func_objdump_list.append(line);
         return func_objdump_list               
+
+    def obtain_pltoffset_objdump(self,fn_):
+        fn=fn_.split('@',1)[0].strip() if '@' in fn_ else fn_.strip()
+        if not self.bin_plt:
+            self.bin_plt=self.obtain_plt_objdump()
+        if not self.plt:
+            self.plt_offset=dict()
+            findme_start='<.plt>:'
+            findme_any_fn='@plt>:'
+            plt_log = self.bin_plt.split('\n')
+            plt_base=None
+            plt_fn=dict()
+            for x in plot_log:
+                if findme_start in x:
+                    plt_base=int(re.match("^([0-9a-fA-F]{8})\s+<.plt>:",x).group(1),16)
+                if findme_any_fn in x:
+                    y=re.match("^([0-9a-fA-F]{8})\s+<(.+).plt>:",x)
+                    plt_fn_addr=y.group(1)
+                    plt_fn_name=y.group(2)
+                    plt_fn[plt_fn_name]=int(plt_fn_addr,16)
+            self.plt_offset=plt_fn
+            self.plt_base=plt_base
+        return self.plt_offset[fn],(self.plt_base[fn]-self.plt_base)
 
     def obtain_fn_objdump(self,fn_):
         fn=f"'{fn_.rstrip().lstrip()}'"

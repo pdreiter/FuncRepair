@@ -644,6 +644,18 @@ if PICKLE_DATA:
         print("Error! Having trouble generating destination directory: '"+dest_dir+"'")
         sys.exit(-1)
     
+    sbfl_metrics={
+        "tarantula":s_tarantula,
+        "ochiai":s_ochiai,
+        "op2":s_op2,
+        "barinel":s_barinel,
+        "dstar":s_dstar
+        }
+    
+    with open(dest_dir+"/sbfl_metrics.pkl",'wb') as f:
+        pickle.dump(sbfl_metrics,f)
+        f.close()
+    
     with open(dest_dir+"/tarantula.pkl",'wb') as f:
         pickle.dump(tarantula,f)
         f.close()

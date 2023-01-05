@@ -405,7 +405,9 @@ build_cgctest(){
 			#	povs=$(ls $GBUILD/test-pov*.sh | perl -pi "s/$GBUILD\/test-//g;s/\.sh//")
             #fi
 			cp $PRD_BASE_DIR/tools/templates/Makefile.prd ${GMAKE}
-			perl -p -e"s/CGCBINARYEXE/$CHAL/" $PRD_BASE_DIR/tools/templates/prd_include.mk > ${GMAKE_INC}
+			perl -p -e"s/<CGCBINARYEXE>/$CHAL/" $PRD_BASE_DIR/tools/templates/prd_include.mk > ${GMAKE_INC}
+			perl -pi -e"s/<RECOMP_SRC>/decompiled_source/" ${GMAKE_INC}
+
             #if (( $ONLY_MAKEFILE==0 )); then
             # GENERATING THE DECOMPILED SOURCE CODE FILE
 			cp $PRD_BASE_DIR/tools/examples/decompiled_source.c ${GSRC}

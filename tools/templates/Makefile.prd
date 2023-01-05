@@ -118,7 +118,7 @@ clean_temp:
 	rm -rf $(TMPDIR) $(OBJDIR)
 
 clean_hook: clean_temp
-	rm -f decompiled_source.[ios] decompiled_source.bc libhook.o
+	rm -f decompiled_source.[ios] decompiled_source.bc libhook.o $(MYOBJ) $(MYINT)
 	rm -rf $(TMPDIR) $(OBJDIR)
 
 clean: clean_genprog clean_hook
