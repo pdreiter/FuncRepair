@@ -141,7 +141,7 @@ build_cgctest(){
     index=$2
     povs=()
     CHAL=$(basename -- $chal)
-	DARPA=$(egrep -w $CHAL $CGC_CB_DIR/tob2darpa.list | sed 's/.*,//');
+	DARPA=$(egrep -w $CHAL $PRD_BASE_DIR/tools/cb-multios/tob2darpa.list | sed 's/.*,//');
 	DARPA_DIR=$CGC_CB_DIR/darpa-samples/cqe-challenges/$DARPA
 	POVXML=1
 	fs=()

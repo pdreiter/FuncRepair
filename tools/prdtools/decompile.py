@@ -2,7 +2,7 @@
 
 import os, sys, subprocess
 
-from prdtools import elf,ghidra_decomp
+import elf,ghidra_decomp
 
 global ghidra_enabled,r2ghidra_enabled
 

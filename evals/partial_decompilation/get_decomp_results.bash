@@ -1,14 +1,16 @@
 #!/bin/bash
 
-#EVALID=""
+SCRIPTDIR=$(dirname -- $(realpath -- ${BASH_SOURCE[0]}))
 EVALID=$1
+evaldir=decomp_eval$EVALID
+CBLIST=$SCRIPTDIR/decomp_xlist
+
 d=decomp_eval-results$EVALID
 mkdir -p $d
-evaldir=decomp_eval$EVALID
 logdir=$evaldir/logs
 recomplogdir=$evaldir/recomp/logs
 decomp_target=decomp_targets
-for cb in $(cat decomp_xlist); do
+for cb in $(cat $CBLIST); do
  (
     echo "CB,FUNC-ID,FUNC-NAME,PRD-STATUS"
     for LOG in $(ls $logdir/$cb.*.log); do 

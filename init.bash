@@ -187,8 +187,14 @@ elif [[ ! -d $PRD_BASE_DIR/R_PACKAGES ]]; then
   mkdir -p $R_LIBS
   pushd $(dirname -- $R_LIBS) &> /dev/null
     RANK=https://cran.r-project.org/src/contrib/RankAggreg_0.6.6.tar.gz
+    RANK_ARCHIVE=https://cran.r-project.org/src/contrib/Archive/RankAggreg/RankAggreg_0.6.6.tar.gz
     GTOOL=https://cran.r-project.org/src/contrib/gtools_3.9.2.tar.gz
-    wget $RANK ; wget $GTOOL
+	if wget -q --method=HEAD $RANK; then 
+	  wget $RANK ;
+	else
+	  wget $RANK_ARCHIVE ; 
+	fi;
+	wget $GTOOL
     R CMD INSTALL -l $R_LIBS $(basename -- $GTOOL)
     R CMD INSTALL -l $R_LIBS $(basename -- $RANK)
   popd &> /dev/null

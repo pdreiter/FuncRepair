@@ -122,3 +122,7 @@ clean_hook: clean_temp
 	rm -rf $(TMPDIR) $(OBJDIR)
 
 clean: clean_genprog clean_hook
+
+basic:
+	$(COMPILE) $(DEFAULT_FLAGS) --save-temps -c basic.c -o $(OBJDIR)/basic.o  $(INCDIRS)
+

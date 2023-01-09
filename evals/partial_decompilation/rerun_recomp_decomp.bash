@@ -20,8 +20,8 @@ log=$LOGFILE
 
 prog=$(cat $target/$i.target_list.$x | cut -d "," -f 2)
 funcs=$(cat $target/$i.target_list.$x | perl -p -e's/^([^,]+),([^,]+),(.*)$/$3/' | perl -p -e's/:/ -f /g;')
-echo "python3 $PRD_BASE_DIR/tools/decompile.py --decompdir $DECOMP_DIR --target-list $target/$i.target_list.$x --out $dest -s $PART_DECOMP_DIR -l $dest/ida.$i.$x.log -p $prog -f $funcs "
-python3 $PRD_BASE_DIR/tools/decompile.py --decompdir $DECOMP_DIR --target-list $target/$i.target_list.$x --out $dest -s $PART_DECOMP_DIR -l $dest/ida.$i.$x.log -p $prog -f $funcs 
+echo "timeout -k 2h 2h python3 $PRD_BASE_DIR/tools/prdtools/decompile.py --decompdir $DECOMP_DIR --target-list $target/$i.target_list.$x --out $dest -s $PART_DECOMP_DIR -l $dest/ida.$i.$x.log -p $prog -f $funcs "
+timeout -k 2h 2h python3 $PRD_BASE_DIR/tools/prdtools/decompile.py --decompdir $DECOMP_DIR --target-list $target/$i.target_list.$x --out $dest -s $PART_DECOMP_DIR -l $dest/ida.$i.$x.log -p $prog -f $funcs 
 if [[ ! -e "$dest/$i" ]]; then
     echo "decompilation : FAILED : $i.$x" > $log
     exit -1
@@ -69,8 +69,23 @@ cp $dest/$i.$x/${i}_recomp.c $dest/$i.$x/${i}_recomp.c-noasm
 cp  $dest/$i.$x/* $rdest/$i.$x/
 
 echo -e "#!/bin/bash\npushd $rdest/$i.$x &> /dev/null;\nID=\$1;\nmkdir -p ../logs\n\
+  make -f Makefile.prd basic &> ../logs/make.basic.\$ID.$i.$x.log\n\
   make -f Makefile.prd clean hook funcinsert &> ../logs/make\$ID.$i.$x.log\n\
  popd &> /dev/null" > $rdest/build.$i.$x.bash
+echo -e "#!/bin/bash\npushd $rdest/$i.$x &> /dev/null;\n\
+  ID=\$1;\n \
+  ret=1; \n\
+  BSTR=""; \n\
+  if [[ ! -e depobj/basic.o ]]; then \n\
+      BSTR=\"basic\$ID : FAILED : $i.$x\"; \n\
+      ret=1; \n\
+  else \n\
+      BSTR=\"basic\$ID : PASSED : $i.$x\"; \n\
+      ret=0; \n\
+  fi; \n\
+  echo \$BSTR >> $log; \n\
+  popd &> /dev/null; \n\
+  exit \$ret" > $rdest/eval_basic.$i.$x.bash
 echo -e "#!/bin/bash\npushd $rdest/$i.$x &> /dev/null;\n\
   ID=\$1;\n \
   ret=1; \n\
@@ -105,10 +120,17 @@ exit \$ret" >> $rdest/test.$i.$x.bash
 
 chmod +x $rdest/test.$i.$x.bash \
  $rdest/build.$i.$x.bash \
+ $rdest/eval_basic.$i.$x.bash \
  $rdest/eval_recomp.$i.$x.bash \
  $rdest/reconasm.$i.$x.bash
 
 $rdest/build.$i.$x.bash "";
+$rdest/eval_basic.$i.$x.bash ""; RET=$?
+if (( $RET!=0 )); then
+echo "[decompile][recompile][basic] $i.$x FAILED"
+else
+echo "[decompile][recompile][basic] $i.$x SUCCESS"
+fi
 $rdest/eval_recomp.$i.$x.bash ""; RET=$?
 if (( $RET!=0 )); then
 echo "[decompile][recompile][wo-asm] $i.$x FAILED"
