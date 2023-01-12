@@ -234,6 +234,8 @@ for args_fn in args.func_list:
             lines = src.read()
             src.close()
         fn_ASM_STUB_MARKER = ASM_STUB_MARKER.format(func)
+        if func=="main":
+            fn_ASM_STUB_MARKER = ASM_STUB_MARKER.format("patchmain")
         replace = lines.replace(fn_ASM_STUB_MARKER, "\t"+"\n".join(asm))
         with open(os.path.realpath(args.src),"w") as out:
             out.write(replace)

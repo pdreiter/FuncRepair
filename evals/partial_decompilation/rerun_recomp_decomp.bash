@@ -69,6 +69,7 @@ cp $dest/$i.$x/${i}_recomp.c $dest/$i.$x/${i}_recomp.c-noasm
 cp  $dest/$i.$x/* $rdest/$i.$x/
 
 echo -e "#!/bin/bash\npushd $rdest/$i.$x &> /dev/null;\nID=\$1;\nmkdir -p ../logs\n\
+  perl -pi -e's#; weak#; // weak#' basic.c\n\
   make -f Makefile.prd basic &> ../logs/make.basic.\$ID.$i.$x.log\n\
   make -f Makefile.prd clean hook funcinsert &> ../logs/make\$ID.$i.$x.log\n\
  popd &> /dev/null" > $rdest/build.$i.$x.bash

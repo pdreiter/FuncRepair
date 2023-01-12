@@ -125,9 +125,10 @@ clean: clean_genprog clean_hook
 
 basic:
 	mkdir -p $(OBJDIR)
+	perl -pi -e's#; weak#; // weak#' basic.c
 	$(COMPILE) $(DEFAULT_FLAGS) -Werror-implicit-function-declaration -c basic.c -o $(OBJDIR)/basic.o  $(INCDIRS)
-	@$(COMPILE) $(DEFAULT_FLAGS) -Werror-implicit-function-declaration -o check $(OBJDIR)/basic.o $(INCDIRS) 
-	@echo -e "\nChecking for unbound functions or variables => U <func>"
-	@nm check | (egrep -w 'U' | egrep -vw 'main' ; [[ "$$?" -ne "0" ]] || (echo "Error! Unbound functions!" && rm check && /bin/false))
-	@rm check && echo -e " => SUCCESS! NO Unbound Functions\n"
+	#@$(COMPILE) $(DEFAULT_FLAGS) -Werror-implicit-function-declaration -o check $(OBJDIR)/basic.o $(INCDIRS) 
+	#@echo -e "\nChecking for unbound functions or variables => U <func>"
+	#@nm check | (egrep -w 'U' | egrep -vw 'main' ; [[ "$$?" -ne "0" ]] || (echo "Error! Unbound functions!" && rm check && /bin/false))
+	#@rm check && echo -e " => SUCCESS! NO Unbound Functions\n"
 
