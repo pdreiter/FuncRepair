@@ -26,6 +26,7 @@ CBLIST=$SCRIPTDIR/decomp_xlist
 if [[ ! -d $SCRIPTDIR/$DECOMP_TARGETS ]] ; then 
    pushd $SCRIPTDIR
    tar -xvzf $DECOMP_TARGETS.tgz
+   perl -pi -e"s#/media/external/research/CGC_GENPROG/FuncRepair/#$PRD_BASE_DIR/#g;" $DECOMP_TARGETS/*.target_list.*
    popd
 fi
 
