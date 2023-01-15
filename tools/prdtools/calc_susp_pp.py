@@ -8,6 +8,7 @@ import pickle
 
 import collections
 import atexit
+import pickle
 
 import numpy as np
 
@@ -34,7 +35,7 @@ name=d_name
 rank_pkl_dir=None
 rank_pkl_file=None
 
-r_file=""
+full_r_dir=""
 
 def parse_args():
     parser = argparse.ArgumentParser(description=\
@@ -77,10 +78,10 @@ def parse_args():
     global logfile
     global rank_pkl_file 
     global rank_pkl_dir
-    rank_pkl_dir=args.outdir+"/rank_pkl"
+    rank_pkl_dir=os.path.realpath(args.outdir+"/rank_pkl")
     if not os.path.exists(rank_pkl_dir):
           os.makedirs(rank_pkl_dir)
-    rank_pkl_file=rank_pkl_dir+"/susp_metrics.pp.pkl"
+    rank_pkl_file=".pp.pkl"
     append=""
     if args.reduce:
         append=".reduced"
@@ -90,7 +91,7 @@ def parse_args():
         else:
             append="."
         append+="std"
-        rank_pkl_file=rank_pkl_dir+"/susp_metrics"+append+".pkl"
+        rank_pkl_file=append+".pkl"
         logfile="susp-default"+append+".log"
     if args.log:
         logfile=args.log
@@ -110,12 +111,11 @@ def parse_args():
     if os.path.exists(logfile):
         os.remove(logfile);
     if args.r_input:
-        global r_file
+        global full_r_dir
         r_dir=args.outdir+"/r"
         if args.r_outdir:
             r_dir=args.r_outdir
-        r_file=r_dir+"/"+name+".r"
-        full_r_dir=os.path.dirname(r_file)
+        full_r_dir=os.path.realpath(r_dir)
         if not os.path.isdir(full_r_dir):
             os.makedirs(full_r_dir)
 
@@ -282,6 +282,343 @@ def kl(p,q,eps):
     #divergence = np.sum(p__*np.log(p__/q__))
     #returnn
     
+def calculate_sbfl(args,name:str,func_list:list,cgfl_id:str,failed_dict:dict,passed_dict:dict,total_failed:int,total_passed:int,default:dict):
+    confidence=copy.copy(default)
+    #tarantula=copy.copy(default)
+    tarantula=list()
+    ochiai=list()
+    op2=list()
+    barinel=list()
+    dstar=list()
+
+    plotdata={'fn':list(),'metric':list(),'score':list()}
+    badfn_plotdata={'fn':list(),'metric':list(),'score':list()}
+
+    
+    for x in func_list:
+        #plotdata={'fn':list(),'tarantula':list(),'ochiai':list(),'op2':list(),'barinel':list(),
+        #'dstar':list(),'confidence':list()}
+        confidence[x] = max(failed_dict[x]/total_failed,passed_dict[x]/total_passed)
+        t=(failed_dict[x]/total_failed)/((failed_dict[x]/total_failed)+(passed_dict[x]/total_passed))
+        o=(failed_dict[x])/math.sqrt(total_failed*(failed_dict[x]+passed_dict[x]))
+        op=failed_dict[x] -(passed_dict[x]/(total_passed+1))
+        b=1. -(passed_dict[x]/(passed_dict[x]+failed_dict[x]))
+        d=1.
+        if (passed_dict[x]+(total_failed-failed_dict[x]))!=0:
+            d=(failed_dict[x]**2)/(passed_dict[x]+(total_failed-failed_dict[x]))
+
+        
+        #print("{} | {} | {} | {} | {} | {} | {} ".format(x,t,o,op,b,d,confidence[x]))
+        tarantula.append(dict({ "name":x, "value":t, "confidence":confidence[x] }))
+        ochiai.append(dict({ "name":x, "value":o, "confidence":confidence[x] }))
+        op2.append(dict({ "name":x, "value":op, "confidence":confidence[x] }))
+        barinel.append(dict({ "name":x, "value":b, "confidence":confidence[x] }))
+        dstar.append(dict({ "name":x, "value":d, "confidence":confidence[x] }))
+
+    if args.standardize: 
+        #print("Before:"+str(op2))
+        data=[tarantula,ochiai,op2,barinel,dstar]
+        standdata=list()
+        for j,metric in enumerate(gmetric_names_):
+            standdata.append(standardize_data(data[j]))
+        #print("After:"+str(standdata[2]))
+        tarantula,ochiai,op2,barinel,dstar=standdata
+    if args.graphs:
+        generate_plotdata(func_list,tarantula,ochiai,op2,barinel,dstar)
+            
+    s_tarantula=scrutinize_and_sort(tarantula)
+    s_ochiai=scrutinize_and_sort(ochiai)
+    s_op2=scrutinize_and_sort(op2)
+    s_barinel=scrutinize_and_sort(barinel)
+    s_dstar=scrutinize_and_sort(dstar)
+    num_statements=len(confidence)
+    bad_funcs_expected=bad_funcs
+    bad_funcs_actual=None
+
+    if not bad_funcs or len(bad_funcs)<1:
+        print("No ground truth, i.e. bad funcs, provided")
+    else:
+        ranks=dict()
+        #gmetric_names_=['tarantula','ochiai','op^2','barinel','dstar']
+        for i in gmetric_names_:
+            ranks[i]={
+            'LIL':None, 
+            'EXAM':list(),
+            'Rank':list(),
+            'Tarantula Rank':list(),
+            'Tarantula Effectiveness':list(),
+            'Steimann Rank':list()
+            }
+
+
+        bad_func_indices=[i for i,x in enumerate(func_list) if x in bad_funcs] 
+        eps=10**-7
+        L_=gen_dist(eps,num_statements,bad_func_indices)
+        metrics__={ 'tarantula':s_tarantula,
+                    'ochiai':s_ochiai,
+                    'op^2':s_op2,
+                    'barinel':s_barinel,
+                    'dstar':s_dstar}
+        for metric,mdata in metrics__.items():
+            rank=0
+            name_array=[elem['name'] for elem in mdata]
+            value_array=[elem['value'] for elem in mdata]
+            prob_dist=gen_prob_array(value_array)
+            # Get KL distance for this metric
+            ranks[metric]['LIL']=kl(value_array,L_,eps)   
+
+            unique_values=OrderedSet(value_array)
+
+            bad_func_names=[elem['name'] for elem in mdata if elem['name'] in bad_funcs]
+            if not bad_funcs_actual:
+                bad_funcs_actual=bad_func_names
+            bad_func_values=[elem['value'] for elem in mdata if elem['name'] in bad_funcs]
+            bad_func_norm_prob=[prob_dist[i] for i in bad_func_indices]
+            bad_func_rank=dict()
+            for i,bad in enumerate(bad_func_names):
+                bad_func_rank[bad]=unique_values.index(bad_func_values[i])
+                
+            for i,bad in enumerate(bad_func_names):
+                try:
+                    size=len(value_array)
+                    rank=bad_func_rank[bad]
+                    num_same=float(value_array.count(bad_func_values[i]))
+                    badfunc_same=float(bad_func_values.count(bad_func_values[i]))
+                    num_greater=float(sum(j>bad_func_values[i] for j in value_array))
+                    # Tarantula Rank Score
+                    # num scores greater than fault + number of scores equal to fault
+                    tar_rank=float(rank)+num_same
+
+                    # Tarantula Effectiveness Score 
+                    # [n-r(f)]/n [n : total number of elements, r(f) : tarantula rank score of fault]
+                    tar_eff_score=(size-tar_rank)/float(size)
+
+                    # EXAM Score
+                    # r(f)/n
+                    exam_score=tar_rank/float(size)
+
+                    # RANK Score
+                    # num scores greater + num_same/2
+                    rank_score=float(num_greater)+(float(num_same)/2.)
+
+                    # STEIMANN Rank Score
+                    # num greater + (num same + 1)/(num same faults + 1)
+                    steimann_score=num_greater+((num_same+1.)/(badfunc_same+1.))
+
+                    #ranks[i]={ 'LIL':None, 'EXAM':None, 'Rank':None, 'Tarantula Rank':None,
+                    #    'Tarantula Effectiveness':None, 'Steimann Rank':None }
+                    ranks[metric]['EXAM'].append(exam_score)
+                    ranks[metric]['Rank'].append(rank_score)
+                    ranks[metric]['Tarantula Rank'].append(tar_rank)
+                    ranks[metric]['Tarantula Effectiveness'].append(tar_eff_score)
+                    ranks[metric]['Steimann Rank'].append(steimann_score)
+
+                except ValueError as v:
+                    print(v)
+                    pass
+                except Exception as e:
+                    print("Unrecoverable exception!")
+                    print(e)
+                    raise
+
+        
+        pickle_data=None
+        lrank_pkl_file=f"{rank_pkl_dir}/susp_metrics{cgfl_id}{rank_pkl_file}"
+        if os.path.exists(lrank_pkl_file):
+            pickle_data=pickle.load(open(lrank_pkl_file,"rb"))
+        else:
+            pickle_data=dict()
+        pickle_data[name]={
+        'ranks':ranks,'metrics':metrics__,
+        'bad_funcs_expected':bad_funcs_expected,
+        'bad_funcs_actual':bad_funcs_actual,
+        'func_list':func_list
+        }
+        with open(lrank_pkl_file,'wb') as f:
+            pickle.dump(pickle_data,f)
+            f.close()
+        
+        
+
+    if PRINT_ME:
+        print('-'*40+f"{name}{cgfl_id}"+'-'*40)
+        logprint("{:10s}|{:21s}|{:21s}|{:21s}|{:21s}|{:21s}|".format("#","tarantula","ochiai","op2","barinel","dstar"))
+        upper=int(args.max_rank)
+        if args.all_rank:
+            upper=len(s_tarantula)
+        print("Printing top "+str(upper)+" results.");
+        #print("type(s_tarantula) :"+str(type(s_tarantula)))
+        #print("type(s_tarantula[0]) :"+str(type(s_tarantula[0])))
+        #print("s_tarantula[0] :"+str(s_tarantula[0]))
+        #print("type(tarantula) :"+str(type(tarantula)))
+        names_=set()
+        for i in range(0,upper):
+            if i >= len(s_tarantula):
+                break
+            s="{:10d}|{:15s} {:1.3f}|{:15s} {:1.3f}|{:15s} {:1.3f}|{:15s} {:1.3f}|{:15s} {:1.3f}|".format(i,
+            s_tarantula[i]['name'],s_tarantula[i]['value'],
+            s_ochiai[i]['name'],s_ochiai[i]['value'],
+            s_op2[i]['name'],s_op2[i]['value'],
+            s_barinel[i]['name'],s_barinel[i]['value'],
+            s_dstar[i]['name'],s_dstar[i]['value'],
+            )
+            names_.add(s_tarantula[i]['name'])
+            if bad_funcs:
+                for fn in bad_funcs:
+                    import re
+                    s=re.sub(r"\|"+fn+" ",r"|"+fn+"* ",s)
+            logprint(s)
+
+        rank_t=dict()
+        tie_t={'t':list(),'o':list(),'op':list(),'b':list(),'d':list()}
+        for i in range(0,upper):
+            j=0
+            for x,y in [(tie_t['t'],s_tarantula),\
+                    (tie_t['o'],s_ochiai),\
+                    (tie_t['op'],s_op2),\
+                    (tie_t['b'],s_barinel),\
+                    (tie_t['d'],s_dstar)\
+                    ]:
+                if len(x)==0 or x[-1]['value']>y[i]['value']:
+                    x.append({'names':[y[i]['name']],'value':y[i]['value']})
+                else:
+                    x[-1]['names'].append(y[i]['name'])
+                nm=rank_t.get(y[i]['name'],None)
+                if not nm:
+                    rank_t[y[i]['name']]=[-1,-1,-1,-1,-1]
+                rank_t[y[i]['name']][j]=len(x)
+                if i>=upper-1:
+                    nm=rank_t.get('TOTAL_BUCKETS',None)
+                    if not nm:
+                        rank_t['TOTAL_BUCKETS']=[-1,-1,-1,-1,-1]
+                    rank_t['TOTAL_BUCKETS'][j]=len(x)
+                j+=1
+
+        all_=rank_t['TOTAL_BUCKETS']
+        logprint("\nRanking per function with collection of ties")
+        logprint(" function rank with ties (ties in this rank) / total functions")
+        logprint("\n{:35s}|{:13s}|{:13s}|{:13s}|{:13s}|{:13s}|".format("Function","tarantula","ochiai","op2","barinel","dstar"))
+        ties=[tie_t['t'],tie_t['o'],tie_t['op'],tie_t['b'],tie_t['d']]
+        for i in list(names_):
+            j=rank_t[i]
+            c=list()
+            for x in ties:
+                c.append([len(y['names']) for y in x])
+            count=[sum(c[x][0:j[x]-1])+1 for x in range(0,5)]
+            #print([c[x][0:j[x]] for x in range(0,5)])
+            s="{:35s}|{:13s}|{:13s}|{:13s}|{:13s}|{:13s}|".format(f"{i}",f"{count[0]} ({c[0][j[0]-1]})/ {upper}",f"{count[1]} ({c[1][j[1]-1]})/ {upper}",f"{count[2]} ({c[2][j[2]-1]})/ {upper}",f"{count[3]} ({c[3][j[3]-1]})/ {upper}",f"{count[4]} ({c[4][j[4]-1]})/ {upper}")
+            #s=f"{i} [ {count[0]} / {upper} [{j[0]}], {count[1]} / {upper} [{j[1]}], {count[2]} / {upper} [{j[2]}], {count[3]} / {upper} [{j[3]}], {count[4]} / {upper} [{j[4]}] ]"
+            logprint(s)
+            
+        
+        
+    if PICKLE_DATA:
+        dest_dir=args.dest_dir
+        
+        
+        if (not os.path.isdir(dest_dir)) and not os.path.dirname(dest_dir):
+            dest_dir=os.getcwd()+"/"+dest_dir
+        
+        #print("[DEBUG] generating pickle content here: "+dest_dir+" ("+os.path.dirname(dest_dir)+")");
+        if not os.path.isdir(dest_dir): 
+            if os.path.isdir(os.path.dirname(dest_dir)):
+                os.makedirs(dest_dir)
+        
+        if not os.path.isdir(dest_dir):
+            print("Error! Having trouble generating destination directory: '"+dest_dir+"'")
+            sys.exit(-1)
+        
+        sbfl_metrics={
+            "tarantula":s_tarantula,
+            "ochiai":s_ochiai,
+            "op2":s_op2,
+            "barinel":s_barinel,
+            "dstar":s_dstar
+            }
+        
+        with open(dest_dir+f"/sbfl_metrics{cgfl_id}.pkl",'wb') as f:
+            pickle.dump(sbfl_metrics,f)
+            f.close()
+        
+        with open(dest_dir+f"/tarantula{cgfl_id}.pkl",'wb') as f:
+            pickle.dump(tarantula,f)
+            f.close()
+        
+        with open(dest_dir+f"/ochiai{cgfl_id}.pkl",'wb') as f:
+            pickle.dump(ochiai,f)
+            f.close()
+        
+        with open(dest_dir+f"/op2{cgfl_id}.pkl",'wb') as f:
+            pickle.dump(op2,f)
+            f.close()
+        
+        with open(dest_dir+f"/barinel{cgfl_id}.pkl",'wb') as f:
+            pickle.dump(barinel,f)
+            f.close()
+        
+        with open(dest_dir+f"/dstar{cgfl_id}.pkl",'wb') as f:
+            pickle.dump(dstar,f)
+            f.close()
+
+
+    if args.graphs:
+        example_plot(plotdata,badfn_plotdata)
+
+    if args.r_input:
+        # from R documentation:
+        # R batch scripts
+        rscript="#!/usr/bin/Rscript\n\n"
+        rscript+="library(\"RankAggreg\")\n"
+        rscript+="args = commandArgs(trailingOnly=TRUE) \n"
+        rscript+=f"rseed = {args.r_seed}"+"\n"
+        rscript+="if (length(args)==1) {\n     rseed = args[1]\n}\n"
+        rscript+="ofile=paste(\""+name+cgfl_id+"\",\""+str(args.top_k)+"\",paste(\"seed\",rseed,sep=\"_\"),\"results\",\"log\",sep=\".\")\n\n"
+        # need to collect two sets of two dimensional arrays: functions and their metrics
+        size=int(len(s_tarantula))
+        #k_value=max(int((size*args.top_k)+0.5),10)
+        k="size <- "+str(size)+"\n"
+        k+="k_percent <- "+str(args.top_k)+"\n"
+        k+="top_k <- c(as.integer((size*k_percent)+0.5), {})\n".format(args.top_k_min)
+        k+="k <- min(c(max(top_k),size))\n"
+        k+="N <- 10*size*size*size\n"
+        if ( (size != len(s_ochiai)) and  
+        (len(s_ochiai) != len(s_op2)) and  
+        (len(s_op2) != len(s_barinel)) and  
+        (len(s_barinel) != len(s_dstar)) 
+        ):
+            print("ERROR: length of arrays are different!")
+
+        else:
+            t_name= ",".join([ '"'+s_tarantula[i]['name']+'"' for i in range(0,size) ] )
+            t_value= ",".join([ str(s_tarantula[i]['value']) for i in range(0,size) ] )
+            o_name= ",".join([ '"'+s_ochiai[i]['name']+'"' for i in range(0,size) ] ) 
+            o_value= ",".join([ str(s_ochiai[i]['value']) for i in range(0,size) ] )
+            op_name= ",".join([ '"'+s_op2[i]['name']+'"' for i in range(0,size) ] )
+            op_value= ",".join([ str(s_op2[i]['value']) for i in range(0,size) ] )
+            b_name= ",".join([ '"'+s_barinel[i]['name']+'"' for i in range(0,size) ] )
+            b_value= ",".join([ str(s_barinel[i]['value']) for i in range(0,size) ] )
+            d_name= ",".join([ '"'+s_dstar[i]['name']+'"' for i in range(0,size) ] )
+            d_value= ",".join([ str(s_dstar[i]['value']) for i in range(0,size) ] )
+            #name_matrix="x <- matrix(c("+t_name+',\n'+o_name+',\n'+op_name+',\n'+b_name+',\n'+d_name+"),byrow=TRUE,ncol="+str(size)+")"
+            name_matrix="\nx <- matrix(c({},\n{},\n{},\n{},\n{}),byrow=TRUE,ncol={})\n".format(
+                t_name,o_name,op_name,b_name,d_name,str(size))
+            weights_matrix="\nw <- matrix(c({},\n{},\n{},\n{},\n{}),byrow=TRUE,ncol={})\n".format(
+                t_value,o_value,op_value,b_value,d_value,str(size))
+            RankAggreg="\n(CES <- RankAggreg(x,k,weights=w, method=\"CE\", distance=\"Spearman\", seed=rseed, rho=.1, convIn=7,N=N))\n"
+            plot="\n# plot(CES)\n"
+            plot+="\ncat(unlist(unname(CES[1])),file=ofile)\n"
+            r_file=full_r_dir+"/"+name+cgfl_id+".r"
+
+            with open(r_file,'w') as f:
+                f.write(rscript)
+                f.write(k)
+                f.write(name_matrix)
+                f.write(weights_matrix)
+                f.write(RankAggreg)
+                f.write(plot)
+                f.close()
+            os.chmod(r_file,0o755)
+            print(str(os.path.realpath(r_file)),file=sys.stderr)
 
 
 atexit.register(write_log)
@@ -296,23 +633,13 @@ fulldict=dict()
 normalized_dict=dict()
 passed_dict=dict()
 failed_dict=dict()
+per_failed_dict=dict()
 total_failed=0.
 total_passed=0.
 func_list=sorted(default.keys())
 print("FUNCTION LIST: "+str(func_list))
 
-confidence=copy.copy(default)
-#tarantula=copy.copy(default)
-tarantula=list()
-ochiai=list()
-op2=list()
-barinel=list()
-dstar=list()
 
-plotdata={'fn':list(),'metric':list(),'score':list()}
-badfn_plotdata={'fn':list(),'metric':list(),'score':list()}
-
-gmetric_names_=['tarantula','ochiai','op^2','barinel','dstar']
 
 test_list=[os.path.splitext(i)[0] for i in sorted(mydictfiles) if i not in all_keys]
 neg_tests=[]
@@ -392,6 +719,12 @@ if total_failed == 0:
     logprint("ERROR: Negative test content is missing!")
     sys.exit(-1);
 
+neg_tlist=[ x for x in test_list if 'n' in x]
+for y in neg_tlist:
+    per_failed_dict[y]=dict()
+    for x in func_list:
+        per_failed_dict[y][x]=0.
+
 for x in func_list:
     passed_dict[x]=0.
     failed_dict[x]=0.
@@ -400,6 +733,7 @@ for x in func_list:
            passed_dict[x]+= 1. if fulldict[y][x]>0. else 0.
        if 'n' in y:
            failed_dict[x]+= 1. if fulldict[y][x]>0. else 0.
+           per_failed_dict[y][x]+=1. if fulldict[y][x]>0. else 0.
 
 if args.reduce:
     remove_me=set()
@@ -411,328 +745,20 @@ if args.reduce:
         func_list.remove(x)
         del passed_dict[x]
         del failed_dict[x]
+        del per_failed_dict[x]
 
 import math
-for x in func_list:
-    #plotdata={'fn':list(),'tarantula':list(),'ochiai':list(),'op2':list(),'barinel':list(),
-    #'dstar':list(),'confidence':list()}
-    confidence[x] = max(failed_dict[x]/total_failed,passed_dict[x]/total_passed)
-    t=(failed_dict[x]/total_failed)/((failed_dict[x]/total_failed)+(passed_dict[x]/total_passed))
-    o=(failed_dict[x])/math.sqrt(total_failed*(failed_dict[x]+passed_dict[x]))
-    op=failed_dict[x] -(passed_dict[x]/(total_passed+1))
-    b=1. -(passed_dict[x]/(passed_dict[x]+failed_dict[x]))
-    d=1.
-    if (passed_dict[x]+(total_failed-failed_dict[x]))!=0:
-        d=(failed_dict[x]**2)/(passed_dict[x]+(total_failed-failed_dict[x]))
 
-    
-    #print("{} | {} | {} | {} | {} | {} | {} ".format(x,t,o,op,b,d,confidence[x]))
-    tarantula.append(dict({ "name":x, "value":t, "confidence":confidence[x] }))
-    ochiai.append(dict({ "name":x, "value":o, "confidence":confidence[x] }))
-    op2.append(dict({ "name":x, "value":op, "confidence":confidence[x] }))
-    barinel.append(dict({ "name":x, "value":b, "confidence":confidence[x] }))
-    dstar.append(dict({ "name":x, "value":d, "confidence":confidence[x] }))
+gmetric_names_=['tarantula','ochiai','op^2','barinel','dstar']
 
-if args.standardize:
-    #print("Before:"+str(op2))
-    data=[tarantula,ochiai,op2,barinel,dstar]
-    standdata=list()
-    for j,metric in enumerate(gmetric_names_):
-        standdata.append(standardize_data(data[j]))
-    #print("After:"+str(standdata[2]))
-    tarantula,ochiai,op2,barinel,dstar=standdata
-if args.graphs:
-    generate_plotdata(func_list,tarantula,ochiai,op2,barinel,dstar)
-        
-s_tarantula=scrutinize_and_sort(tarantula)
-s_ochiai=scrutinize_and_sort(ochiai)
-s_op2=scrutinize_and_sort(op2)
-s_barinel=scrutinize_and_sort(barinel)
-s_dstar=scrutinize_and_sort(dstar)
-num_statements=len(confidence)
-bad_funcs_expected=bad_funcs
-bad_funcs_actual=None
+evaluations=[("",failed_dict,total_failed)]
+for x in neg_tlist:
+    evaluations.append((f"-{x}",per_failed_dict[x],1))
 
-if not bad_funcs or len(bad_funcs)<1:
-    print("No ground truth, i.e. bad funcs, provided")
-else:
-    ranks=dict()
-    #gmetric_names_=['tarantula','ochiai','op^2','barinel','dstar']
-    for i in gmetric_names_:
-        ranks[i]={
-        'LIL':None, 
-        'EXAM':list(),
-        'Rank':list(),
-        'Tarantula Rank':list(),
-        'Tarantula Effectiveness':list(),
-        'Steimann Rank':list()
-        }
-
-
-    bad_func_indices=[i for i,x in enumerate(func_list) if x in bad_funcs] 
-    eps=10**-7
-    L_=gen_dist(eps,num_statements,bad_func_indices)
-    metrics__={ 'tarantula':s_tarantula,
-                'ochiai':s_ochiai,
-                'op^2':s_op2,
-                'barinel':s_barinel,
-                'dstar':s_dstar}
-    for metric,mdata in metrics__.items():
-        rank=0
-        name_array=[elem['name'] for elem in mdata]
-        value_array=[elem['value'] for elem in mdata]
-        prob_dist=gen_prob_array(value_array)
-        # Get KL distance for this metric
-        ranks[metric]['LIL']=kl(value_array,L_,eps)   
-
-        unique_values=OrderedSet(value_array)
-
-        bad_func_names=[elem['name'] for elem in mdata if elem['name'] in bad_funcs]
-        if not bad_funcs_actual:
-            bad_funcs_actual=bad_func_names
-        bad_func_values=[elem['value'] for elem in mdata if elem['name'] in bad_funcs]
-        bad_func_norm_prob=[prob_dist[i] for i in bad_func_indices]
-        bad_func_rank=dict()
-        for i,bad in enumerate(bad_func_names):
-            bad_func_rank[bad]=unique_values.index(bad_func_values[i])
-            
-        for i,bad in enumerate(bad_func_names):
-            try:
-                size=len(value_array)
-                rank=bad_func_rank[bad]
-                num_same=float(value_array.count(bad_func_values[i]))
-                badfunc_same=float(bad_func_values.count(bad_func_values[i]))
-                num_greater=float(sum(j>bad_func_values[i] for j in value_array))
-                # Tarantula Rank Score
-                # num scores greater than fault + number of scores equal to fault
-                tar_rank=float(rank)+num_same
-
-                # Tarantula Effectiveness Score 
-                # [n-r(f)]/n [n : total number of elements, r(f) : tarantula rank score of fault]
-                tar_eff_score=(size-tar_rank)/float(size)
-
-                # EXAM Score
-                # r(f)/n
-                exam_score=tar_rank/float(size)
-
-                # RANK Score
-                # num scores greater + num_same/2
-                rank_score=float(num_greater)+(float(num_same)/2.)
-
-                # STEIMANN Rank Score
-                # num greater + (num same + 1)/(num same faults + 1)
-                steimann_score=num_greater+((num_same+1.)/(badfunc_same+1.))
-
-                #ranks[i]={ 'LIL':None, 'EXAM':None, 'Rank':None, 'Tarantula Rank':None,
-                #    'Tarantula Effectiveness':None, 'Steimann Rank':None }
-                ranks[metric]['EXAM'].append(exam_score)
-                ranks[metric]['Rank'].append(rank_score)
-                ranks[metric]['Tarantula Rank'].append(tar_rank)
-                ranks[metric]['Tarantula Effectiveness'].append(tar_eff_score)
-                ranks[metric]['Steimann Rank'].append(steimann_score)
-
-            except ValueError as v:
-                print(v)
-                pass
-            except Exception as e:
-                print("Unrecoverable exception!")
-                print(e)
-                raise
-
-    import pickle
-    pickle_data=None
-    if os.path.exists(rank_pkl_file):
-        pickle_data=pickle.load(open(rank_pkl_file,"rb"))
-    else:
-        pickle_data=dict()
-    pickle_data[name]={
-    'ranks':ranks,'metrics':metrics__,
-    'bad_funcs_expected':bad_funcs_expected,
-    'bad_funcs_actual':bad_funcs_actual,
-    'func_list':func_list
-    }
-    with open(rank_pkl_file,'wb') as f:
-        pickle.dump(pickle_data,f)
-        f.close()
-    
+for cgfl_id_,failed_dict_,total_failed_ in evaluations:
+    calculate_sbfl(args,name,func_list,cgfl_id_,failed_dict_,passed_dict,total_failed_,total_passed,default)
     
 
-if PRINT_ME:
-    logprint("{:10s}|{:21s}|{:21s}|{:21s}|{:21s}|{:21s}|".format("#","tarantula","ochiai","op2","barinel","dstar"))
-    upper=int(args.max_rank)
-    if args.all_rank:
-        upper=len(s_tarantula)
-    print("Printing top "+str(upper)+" results.");
-    #print("type(s_tarantula) :"+str(type(s_tarantula)))
-    #print("type(s_tarantula[0]) :"+str(type(s_tarantula[0])))
-    #print("s_tarantula[0] :"+str(s_tarantula[0]))
-    #print("type(tarantula) :"+str(type(tarantula)))
-    names_=set()
-    for i in range(0,upper):
-        if i >= len(s_tarantula):
-            break
-        s="{:10d}|{:15s} {:1.3f}|{:15s} {:1.3f}|{:15s} {:1.3f}|{:15s} {:1.3f}|{:15s} {:1.3f}|".format(i,
-        s_tarantula[i]['name'],s_tarantula[i]['value'],
-        s_ochiai[i]['name'],s_ochiai[i]['value'],
-        s_op2[i]['name'],s_op2[i]['value'],
-        s_barinel[i]['name'],s_barinel[i]['value'],
-        s_dstar[i]['name'],s_dstar[i]['value'],
-        )
-        names_.add(s_tarantula[i]['name'])
-        if bad_funcs:
-            for fn in bad_funcs:
-                import re
-                s=re.sub(r"\|"+fn+" ",r"|"+fn+"* ",s)
-        logprint(s)
-
-    rank_t=dict()
-    tie_t={'t':list(),'o':list(),'op':list(),'b':list(),'d':list()}
-    for i in range(0,upper):
-        j=0
-        for x,y in [(tie_t['t'],s_tarantula),\
-                  (tie_t['o'],s_ochiai),\
-                  (tie_t['op'],s_op2),\
-                  (tie_t['b'],s_barinel),\
-                  (tie_t['d'],s_dstar)\
-                  ]:
-            if len(x)==0 or x[-1]['value']>y[i]['value']:
-                x.append({'names':[y[i]['name']],'value':y[i]['value']})
-            else:
-                x[-1]['names'].append(y[i]['name'])
-            nm=rank_t.get(y[i]['name'],None)
-            if not nm:
-                rank_t[y[i]['name']]=[-1,-1,-1,-1,-1]
-            rank_t[y[i]['name']][j]=len(x)
-            if i>=upper-1:
-                nm=rank_t.get('TOTAL_BUCKETS',None)
-                if not nm:
-                    rank_t['TOTAL_BUCKETS']=[-1,-1,-1,-1,-1]
-                rank_t['TOTAL_BUCKETS'][j]=len(x)
-            j+=1
-
-    all_=rank_t['TOTAL_BUCKETS']
-    logprint("\nRanking per function with collection of ties")
-    logprint(" function rank with ties (ties in this rank) / total functions")
-    logprint("\n{:35s}|{:13s}|{:13s}|{:13s}|{:13s}|{:13s}|".format("Function","tarantula","ochiai","op2","barinel","dstar"))
-    ties=[tie_t['t'],tie_t['o'],tie_t['op'],tie_t['b'],tie_t['d']]
-    for i in list(names_):
-        j=rank_t[i]
-        c=list()
-        for x in ties:
-            c.append([len(y['names']) for y in x])
-        count=[sum(c[x][0:j[x]-1])+1 for x in range(0,5)]
-        #print([c[x][0:j[x]] for x in range(0,5)])
-        s="{:35s}|{:13s}|{:13s}|{:13s}|{:13s}|{:13s}|".format(f"{i}",f"{count[0]} ({c[0][j[0]-1]})/ {upper}",f"{count[1]} ({c[1][j[1]-1]})/ {upper}",f"{count[2]} ({c[2][j[2]-1]})/ {upper}",f"{count[3]} ({c[3][j[3]-1]})/ {upper}",f"{count[4]} ({c[4][j[4]-1]})/ {upper}")
-        #s=f"{i} [ {count[0]} / {upper} [{j[0]}], {count[1]} / {upper} [{j[1]}], {count[2]} / {upper} [{j[2]}], {count[3]} / {upper} [{j[3]}], {count[4]} / {upper} [{j[4]}] ]"
-        logprint(s)
-        
-    
-    
-if PICKLE_DATA:
-    dest_dir=args.dest_dir
-    
-    
-    if (not os.path.isdir(dest_dir)) and not os.path.dirname(dest_dir):
-        dest_dir=os.getcwd()+"/"+dest_dir
-    
-    #print("[DEBUG] generating pickle content here: "+dest_dir+" ("+os.path.dirname(dest_dir)+")");
-    if not os.path.isdir(dest_dir): 
-        if os.path.isdir(os.path.dirname(dest_dir)):
-            os.makedirs(dest_dir)
-    
-    if not os.path.isdir(dest_dir):
-        print("Error! Having trouble generating destination directory: '"+dest_dir+"'")
-        sys.exit(-1)
-    
-    sbfl_metrics={
-        "tarantula":s_tarantula,
-        "ochiai":s_ochiai,
-        "op2":s_op2,
-        "barinel":s_barinel,
-        "dstar":s_dstar
-        }
-    
-    with open(dest_dir+"/sbfl_metrics.pkl",'wb') as f:
-        pickle.dump(sbfl_metrics,f)
-        f.close()
-    
-    with open(dest_dir+"/tarantula.pkl",'wb') as f:
-        pickle.dump(tarantula,f)
-        f.close()
-    
-    with open(dest_dir+"/ochiai.pkl",'wb') as f:
-        pickle.dump(ochiai,f)
-        f.close()
-    
-    with open(dest_dir+"/op2.pkl",'wb') as f:
-        pickle.dump(op2,f)
-        f.close()
-    
-    with open(dest_dir+"/barinel.pkl",'wb') as f:
-        pickle.dump(barinel,f)
-        f.close()
-    
-    with open(dest_dir+"/dstar.pkl",'wb') as f:
-        pickle.dump(dstar,f)
-        f.close()
-
-
-if args.graphs:
-    example_plot(plotdata,badfn_plotdata)
-
-if args.r_input:
-    # from R documentation:
-    # R batch scripts
-    rscript="#!/usr/bin/Rscript\n\n"
-    rscript+="library(\"RankAggreg\")\n"
-    rscript+="args = commandArgs(trailingOnly=TRUE) \n"
-    rscript+=f"rseed = {args.r_seed}"+"\n"
-    rscript+="if (length(args)==1) {\n     rseed = args[1]\n}\n"
-    rscript+="ofile=paste(\""+name+"\",\""+str(args.top_k)+"\",paste(\"seed\",rseed,sep=\"_\"),\"results\",\"log\",sep=\".\")\n\n"
-    # need to collect two sets of two dimensional arrays: functions and their metrics
-    size=int(len(s_tarantula))
-    #k_value=max(int((size*args.top_k)+0.5),10)
-    k="size <- "+str(size)+"\n"
-    k+="k_percent <- "+str(args.top_k)+"\n"
-    k+="top_k <- c(as.integer((size*k_percent)+0.5), {})\n".format(args.top_k_min)
-    k+="k <- min(c(max(top_k),size))\n"
-    k+="N <- 10*size*size*size\n"
-    if ( (size != len(s_ochiai)) and  
-       (len(s_ochiai) != len(s_op2)) and  
-       (len(s_op2) != len(s_barinel)) and  
-       (len(s_barinel) != len(s_dstar)) 
-    ):
-        print("ERROR: length of arrays are different!")
-
-    else:
-        t_name= ",".join([ '"'+s_tarantula[i]['name']+'"' for i in range(0,size) ] )
-        t_value= ",".join([ str(s_tarantula[i]['value']) for i in range(0,size) ] )
-        o_name= ",".join([ '"'+s_ochiai[i]['name']+'"' for i in range(0,size) ] ) 
-        o_value= ",".join([ str(s_ochiai[i]['value']) for i in range(0,size) ] )
-        op_name= ",".join([ '"'+s_op2[i]['name']+'"' for i in range(0,size) ] )
-        op_value= ",".join([ str(s_op2[i]['value']) for i in range(0,size) ] )
-        b_name= ",".join([ '"'+s_barinel[i]['name']+'"' for i in range(0,size) ] )
-        b_value= ",".join([ str(s_barinel[i]['value']) for i in range(0,size) ] )
-        d_name= ",".join([ '"'+s_dstar[i]['name']+'"' for i in range(0,size) ] )
-        d_value= ",".join([ str(s_dstar[i]['value']) for i in range(0,size) ] )
-        #name_matrix="x <- matrix(c("+t_name+',\n'+o_name+',\n'+op_name+',\n'+b_name+',\n'+d_name+"),byrow=TRUE,ncol="+str(size)+")"
-        name_matrix="\nx <- matrix(c({},\n{},\n{},\n{},\n{}),byrow=TRUE,ncol={})\n".format(
-            t_name,o_name,op_name,b_name,d_name,str(size))
-        weights_matrix="\nw <- matrix(c({},\n{},\n{},\n{},\n{}),byrow=TRUE,ncol={})\n".format(
-            t_value,o_value,op_value,b_value,d_value,str(size))
-        RankAggreg="\n(CES <- RankAggreg(x,k,weights=w, method=\"CE\", distance=\"Spearman\", seed=rseed, rho=.1, convIn=7,N=N))\n"
-        plot="\n# plot(CES)\n"
-        plot+="\ncat(unlist(unname(CES[1])),file=ofile)\n"
-        with open(r_file,'w') as f:
-            f.write(rscript)
-            f.write(k)
-            f.write(name_matrix)
-            f.write(weights_matrix)
-            f.write(RankAggreg)
-            f.write(plot)
-            f.close()
-        os.chmod(r_file,0o755)
-        print(str(os.path.realpath(r_file)),file=sys.stderr)
 
     
 

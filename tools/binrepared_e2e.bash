@@ -5,8 +5,15 @@ mydestdir=$2
 echo "DESTINATION $mydestdir"
 MYBYTES=$3
 SEED=$4
-#MYINSTR=$5
 
+GROUND_TRUTH=$(dirname -- $(realpath -- $mydestdir))
+echo "GROUND_TRUTH: $GROUND_TRUTH"
+# Let's grab and unpack the Ground Truth for the CGC dataset
+if [[ ! -d $GROUND_TRUTH/patched_functions ]]; then
+  patched_tgz="$PRD_BASE_DIR/tools/cb-multios/patched_functions.tgz"
+  echo "Obtaining CGC Ground Truth from $patched_tgz"
+  tar -xvzf $patched_tgz $GROUND_TRUTH/
+fi
 
 # 0 : setup
 # 1 : CGFL
@@ -14,8 +21,8 @@ SEED=$4
 # 3 : VERIFY PRD IMAGE
 # 4 : PERFORMANCE
 # 5 : APR
+
 #EXECUTE=( 1 1 1 1 1 1 )
-#EXECUTE=( 1 1 1 1 0 1 )
 EXECUTE=( 1 1 1 1 0 1 )
 RESET=( 0 0 0 0 0 0 )
 
@@ -30,7 +37,6 @@ DECOMP_TOOL_DIR=$PART_DECOMP_DIR
 MYCC=gcc-8
 MYCPP=g++-8
 
-#TOP_K_PERCENT=0.25
 TOP_K_PERCENT=0.35
 # (52 - 3) / 7 = 7 stack pushes
 MIN_BYTES_FN=$MYBYTES;
@@ -121,12 +127,17 @@ if (( ${EXECUTE[0]} == 1 )); then
     [[ -e $cb_build/$cb ]] && echo "original binary build : SUCCESS" >> $status_log
     [[ ! -e $cb_build/$cb ]] && echo "original binary build : FAIL" >> $status_log && exit -1
 
+    
     pushd $cb_build > /dev/null
     echo "--------------------------------"
-    echo "Running sanity tests on $cb image"
     sanity_log="sanity.$cb.log"
-    $TOOL_DIR/sanity.bash $cb -fail-fast |& tee $sanity_log
-    retval=$?
+    if [[ ! -e $sanity_log ]] || (( $(tail -n 10 $sanity_log | egrep -c '(EXITING EARLY|failed POSITIVE|failed NEGATIVE)')==0 )); then
+        echo "Running sanity tests on $cb image"
+        $TOOL_DIR/sanity.bash $cb -fail-fast |& tee $sanity_log
+        retval=$?
+    else 
+        echo "Collecting sanity results on $cb image"
+    fi
     FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
     if (( $FAILED==1 )); then
         echo "CB sanity check [early fail] : FAIL" >> $status_log && exit -1
@@ -158,7 +169,6 @@ if (( ${EXECUTE[0]} == 1 )); then
     echo "$TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json"
     $TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json
 
-
 fi
 
 ##########################################################################
@@ -185,7 +195,7 @@ if (( ${EXECUTE[1]} == 1 )); then
     $TOOL_DIR/screen_small_functions.py --exe $cb_build/$cb --json-out $cb_build/info.json
     fi
    
-   
+    echo "Checking if CGFL output exists : $profile_out"
     if [[ ! -e $profile_out ]] ; then 
         $TOOL_DIR/convert_test_to_cgfl.bash $cb --src=$builddir --logdir=$profile_out
         #ln -sf $CGC_CB_DIR/genprog/$cb/test_cgfl.sh build32/challenges/$cb/ ;
@@ -232,14 +242,22 @@ if (( ${EXECUTE[1]} == 1 )); then
     if [[ ! -e $r_out/$cb.r  ]] ; then 
         echo "cgfl top rank [callgrind test issue] : FAIL" >> $status_log; exit -1; 
     fi
-
-    fsize=$(file $cb.top_rank.list | awk '{print $NF}') 
-    if [[ ! -e $ranked_out/$cb.top_rank.list || $fsize == "empty" ]] ; then 
+    fsize="empty"
+    if [[ -e $ranked_out/$cb.top_rank.list ]]; then
+        fsize=$(file $ranked_out/$cb.top_rank.list | awk '{print $NF}') 
+    fi
+    echo "$ranked_out/$cb.top_rank.list : file size = $fsize"
+    if [[ $fsize == "empty" ]] ; then 
         mkdir -p $ranked_out
         pushd $ranked_out > /dev/null
         $r_out/$cb.r |& tee $cb.cgfl.log
         cat $cb.$TOP_K_PERCENT.seed_${SEED}.results.log | sed 's/ /:/g' > $cb.top_rank.list
         fsize=$(file $cb.top_rank.list | awk '{print $NF}') 
+        for x in $(ls $r_out/$cb-*.r); do
+            id_=$(echo $x | perl -p -e"s#.*/([^/]*).r\$#\$1#;s#$cb##")
+            $x |& tee $cb$id_.cgfl.log
+            cat $cb$id_.$TOP_K_PERCENT.seed_${SEED}.results.log | sed 's/ /:/g' > $cb$id_.top_rank.list
+        done
         popd > /dev/null
     fi
     if [[ ! -e $ranked_out/$cb.top_rank.list ]]; then
@@ -247,7 +265,9 @@ if (( ${EXECUTE[1]} == 1 )); then
     else
     fsize=$(file $ranked_out/$cb.top_rank.list | awk '{print $NF}') 
     fi
-    $TOOL_DIR/cgfl_status_pp.bash $destdir $cb $SEED
+    
+    echo "$TOOL_DIR/cgfl_status_pp.bash $destdir $cb \"$SEED\" $GROUND_TRUTH"
+    $TOOL_DIR/cgfl_status_pp.bash $destdir $cb "$SEED" $GROUND_TRUTH
     if [[ -e $ranked_out/$cb.top_rank.list && $fsize != "empty" ]] ; then 
         echo "cgfl top rank : SUCCESS" >> $status_log ; 
     else 
@@ -356,7 +376,7 @@ if (( ${EXECUTE[2]} == 1 )); then
     fi
 
     if [[ ! -e $decomp_out/$cb ]]; then 
-       $TOOL_DIR/decompile.py -p $cb_build/$cb --target-list $decomp_in/$cb.target_list \
+       $TOOL_DIR/prdtools/decompile.py -p $cb_build/$cb --target-list $decomp_in/$cb.target_list \
             -l $decomp_out/multidecomp.$cb.log -o $decomp_out -s $DECOMP_TOOL_DIR -f DUMMY
        #python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
        # $decomp_in/$cb.target_list --ouput_directory $decomp_out \
