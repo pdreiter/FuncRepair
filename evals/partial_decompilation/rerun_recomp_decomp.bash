@@ -116,7 +116,7 @@ if (( \$(egrep -c 'EXITING EARLY Due to failures' ../logs/run.$i.$x.log)>0 )); t
   STR=\"test-equivalence : FAILED : $i.$x\"; \n\
   ret=1; \
 elif (( \$(egrep -c 'Returning 0' ../logs/run.$i.$x.log)==0 )); then \
-  XX=\$(egrep \"of failed NEGATIVE tests\" ../logs/run.$i.$x.log | perl -p -e's/.*(\d+) of \d+.*$/\$1/) 
+  XX=\$(egrep \"of failed NEGATIVE tests\" ../logs/run.$i.$x.log | perl -p -e's/.*(\d+) of \d+.*$/\$1/') 
   STR=\"test-equivalence : FAILED-PASSING-NEG-\$XX : $i.$x\"; \n\
   ret=0; \
 else \

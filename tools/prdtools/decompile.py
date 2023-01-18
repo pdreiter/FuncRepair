@@ -172,6 +172,7 @@ if __name__ == "__main__":
 else:
     r2ghidra_enabled=False
     ghidra_enabled=False
+    sys.exit(-1)
 
             
 

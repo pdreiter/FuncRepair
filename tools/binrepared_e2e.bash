@@ -6,6 +6,8 @@ echo "DESTINATION $mydestdir"
 MYBYTES=$3
 SEED=$4
 
+REQUIRE_NEG_TESTS_TO_FAIL=1
+
 GROUND_TRUTH=$(dirname -- $(realpath -- $mydestdir))
 echo "GROUND_TRUTH: $GROUND_TRUTH"
 # Let's grab and unpack the Ground Truth for the CGC dataset
@@ -32,7 +34,7 @@ CGC_BASE_DIR=$CGC_CB_DIR
 TOOL_DIR=$PRD_BASE_DIR/tools
 TEMPLATES_DIR=$TOOL_DIR/templates
 
-CGC_TOOL_DIR=$CGC_CB_DIR/tools/python3
+CGC_TOOL_DIR=$CGC_CB_DIR/tools #/python3 #moved from tools/python3 to tools
 DECOMP_TOOL_DIR=$PART_DECOMP_DIR
 MYCC=gcc-8
 MYCPP=g++-8
@@ -305,16 +307,17 @@ if (( ${EXECUTE[2]} == 1 )); then
             mkdir -p $din $dout
             $TOOL_DIR/prdtools/decompile.py -p $cb_build/$cb --target-list $din/$cb.$i.target_list \
             -l $dout/multidecomp.log -o $dout -s $DECOMP_TOOL_DIR -f $f
+            RET=$?
             #echo -n "$cb,$cb_build/$cb,$f" > $din/$cb.$i.target_list
             #python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
             #$din/$cb.$i.target_list --ouput_directory $dout \
             #--scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $dout/multidecomp.log
             #echo "====DONE====" >> $dout/multidecomp.log
             (( i+=1 ))
-            [[ ! -e $dout/$cb ]] && echo "decompilation [Decompilation] $f : FAIL" >> $status_log && continue
+            ( [[ ! -e $dout/$cb ]] || (( $RET!=0 )) ) && echo "decompilation [Decompilation] $f : FAIL" >> $status_log && continue
             cp -v $TEMPLATES_DIR/Makefile.prd $dout/$cb/
             cp -v $TEMPLATES_DIR/script.ld $dout/$cb/
-            cp -v $dout/$cb/${cb}_recomp.c $dout/$cb/${cb}_recomp.c.orig 
+            cp -v $dout/$cb/${cb}_recomp.c $dout/$cb/${cb}_recomp.c.orig
             ln -sf $cb_build/test.sh $dout/$cb/
             ln -sf $cb_build/configuration-func-repair $dout/$cb/
             ln -sf $cb_build/poller $dout/$cb/
@@ -325,39 +328,42 @@ if (( ${EXECUTE[2]} == 1 )); then
             ln -sf $j $dout/$cb/
             done
             pushd $dout/$cb > /dev/null
-            make -f Makefile.prd clean hook |& tee make.decomp_hook.log
+            mkdir -p logs
+            make -f Makefile.prd clean hook |& tee logs/make.decomp_hook.log-$i
             [[ ! -e libhook.so ]] && echo "decompilation [Recompilation] $f : FAILED" >> $status_log && popd > /dev/null &&  continue
-            x=$(egrep -c 'Error\! Unbound functions\!' make.decomp_hook.log)
+            x=$(egrep -c 'Error\! Unbound functions\!' logs/make.decomp_hook.log-$i)
             (( $x>0 )) && echo "decompilation [Recompilation Symbol Binding] $f : FAILED" >> $status_log && popd > /dev/null &&  continue
+            echo "decompilation [Recompilation Symbol Binding] $f : PASS" >> $status_log
             $TOOL_DIR/create_asm_multidetour.py --json-in prd_info.json --file-to-objdump libhook.so --source ${cb}_recomp.c
             diff --brief ${cb}_recomp.c ${cb}_recomp.c.orig &> /dev/null ; diff_ret=$?
             (( $?!=0 )) && echo "decompilation [Inline ASM Insertion] $f : FAIL" >> $status_log && exit -1
             [[ -e $cb.trampoline.bin ]] && rm $cb.trampoline.bin
             make -n -f  Makefile.prd clean hook funcinsert
-            make -f Makefile.prd clean hook funcinsert |& tee make.prd_build.log
+            make -f Makefile.prd clean hook funcinsert |& tee logs/make.prd_build.log-$i
             [[ ! -e $cb.trampoline.bin ]] && echo "decompilation [PRD Binary] $f : FAIL" >> $status_log && popd > /dev/null && continue
             sanity_log="sanity.trampoline.log"
             echo "--------------------------------"
             echo "Running sanity tests on $f image"
-            $TOOL_DIR/sanity.bash $cb.trampoline.bin -fail-fast |& tee $sanity_log
+            $TOOL_DIR/sanity.bash $cb.trampoline.bin -fail-fast |& tee logs/$sanity_log-$i
             retval=$?
-            FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
-            if (( $FAILED==1 )); then
+            FAILED=$(tail -n 10 logs/$sanity_log-$i | egrep -c 'EXITING EARLY');
+            if (( $FAILED>0 )); then
                 echo "PRD [$f] sanity check [early fail] : FAIL" >> $status_log && popd > /dev/null && continue
             fi
-            pos=$(tail -n 10 $sanity_log | egrep ' failed POSITIVE tests');
-            neg=$(tail -n 10 $sanity_log | egrep ' failed NEGATIVE tests');
-            negofail=$(tail -n 10 $sanity_log | egrep 'negotiation_failed NEGATIVE tests');
+            pos=$(tail -n 10 logs/$sanity_log-$i | egrep ' failed POSITIVE tests');
+            neg=$(tail -n 10 logs/$sanity_log-$i | egrep ' failed NEGATIVE tests');
+            negofail=$(tail -n 10 logs/$sanity_log-$i | egrep 'negotiation_failed NEGATIVE tests');
             pf=$(echo $pos | awk '{print $6}');
             pa=$(echo $pos | awk '{print $NF}');
             nf=$(echo $neg | awk '{print $6}');
             na=$(echo $neg | awk '{print $NF}');
             negof=$(echo $negofail | awk '{print $6}');
             negoa=$(echo $negofail | awk '{print $NF}');
-            if (( $na != $nf )); then
+            
+            if (( $pf != 0 )); then
                 echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && popd > /dev/null && continue
-            elif (( $pf != 0 )); then
-                echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : FAIL" >> $status_log && popd > /dev/null && continue
+            elif (( $REQUIRE_NEG_TESTS_TO_FAIL==1 )) && (( $na != $nf )); then
+                echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)][NEG-PASS] : FAIL " >> $status_log && popd > /dev/null && continue
             else 
                 echo "PRD [$f] sanity check [pos($pf/$pa);neg($nf/$na);negotiation($negof/$negoa)] : SUCCESS" >> $status_log
             fi;
@@ -375,7 +381,7 @@ if (( ${EXECUTE[2]} == 1 )); then
        
     fi
 
-    if [[ ! -e $decomp_out/$cb ]]; then 
+    if [[ ! -e $decomp_out/$cb ]] || [[ ! -e $decomp_out/$cb/${cb}_recomp.c ]]; then 
        $TOOL_DIR/prdtools/decompile.py -p $cb_build/$cb --target-list $decomp_in/$cb.target_list \
             -l $decomp_out/multidecomp.$cb.log -o $decomp_out -s $DECOMP_TOOL_DIR -f DUMMY
        #python3 $DECOMP_TOOL_DIR/prd_multidecomp_ida.py --target_list \
@@ -383,7 +389,7 @@ if (( ${EXECUTE[2]} == 1 )); then
        # --scriptpath $DECOMP_TOOL_DIR/get_ida_details.py |& tee $decomp_out/multidecomp.$cb.log
         mv $decomp_out/multidecomp.$cb.log $decomp_out/$cb/multidecomp.log
     fi 
-    [[ ! -e $decomp_out/$cb ]] && echo "decompilation [Decompilation] : FAIL" >> $status_log && exit -1
+    ([[ ! -e $decomp_out/$cb ]] || [[ ! -e $decomp_out/$cb/${cb}_recomp.c ]]) && echo "decompilation [Decompilation] : FAIL" >> $status_log && exit -1
     cp $TEMPLATES_DIR/Makefile.prd $decomp_out/$cb/
     cp $TEMPLATES_DIR/script.ld $decomp_out/$cb/
     ln -sf $cb_build/$cb $decomp_out/$cb/
@@ -422,11 +428,15 @@ if (( ${EXECUTE[3]} == 1 )); then
     cp $decomp_out/$cb/defs.h $cb_build/
     cp $decomp_out/$cb/prd_include.mk $cb_build/
     cp $decomp_out/$cb/prd_info.json $cb_build/
+    cp $decomp_out/$cb/resolved-types.h $cb_build/
     #cp $decomp_out/$cb/$cb.trampoline.bin $cb_build/
    
    pushd $cb_build > /dev/null
     make -f Makefile.prd clean hook funcinsert |& tee make.decomp_hook.log
-   
+    if [[ ! -e $cb.trampoline.bin ]]; then 
+        echo "Failed to recompile $cb.trampoline.bin [$cb_build]"
+        echo "Recompilation : FAIL " >> $status_log && exit -1
+    fi
     sanity_log="sanity.trampoline.log"
     $TOOL_DIR/sanity.bash $cb.trampoline.bin -fail-fast |& tee $sanity_log
     FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
