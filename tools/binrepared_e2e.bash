@@ -9,6 +9,7 @@ SEED=$4
 REQUIRE_NEG_TESTS_TO_FAIL=1
 
 GROUND_TRUTH=$(dirname -- $(realpath -- $mydestdir))
+RAW_DECOMPDIR=$(dirname -- $(realpath -- $mydestdir))/decomp_dir
 echo "GROUND_TRUTH: $GROUND_TRUTH"
 # Let's grab and unpack the Ground Truth for the CGC dataset
 if [[ ! -d $GROUND_TRUTH/patched_functions ]]; then
@@ -306,6 +307,7 @@ if (( ${EXECUTE[2]} == 1 )); then
             dout="$decomp_test/out.$i"
             mkdir -p $din $dout
             $TOOL_DIR/prdtools/decompile.py -p $cb_build/$cb --target-list $din/$cb.$i.target_list \
+            --decompdir $RAW_DECOMPDIR \
             -l $dout/multidecomp.log -o $dout -s $DECOMP_TOOL_DIR -f $f
             RET=$?
             #echo -n "$cb,$cb_build/$cb,$f" > $din/$cb.$i.target_list
