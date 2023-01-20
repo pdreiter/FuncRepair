@@ -1,8 +1,8 @@
 #!/bin/bash
 
-ID=$1
-LOGDIR=$PWD/decomp_eval$ID/logs
-RESULTS=$PWD/decomp_eval$ID.results.log;
+ID_=$1
+LOGDIR=$PWD/decomp_eval$ID_/logs
+RESULTS=$PWD/decomp_eval$ID_.results.log;
 echo "program.func_id,lang,decompilation,basic,recompilation,recompilation-w-asm,test-equivalence"> $RESULTS;
 for i in $(ls $LOGDIR); do  
     ID=$(echo $i | sed 's/\.log//'); 
@@ -21,4 +21,4 @@ for i in $(ls $LOGDIR); do
     done;
     echo $line >> $RESULTS; 
 done; 
-cp $RESULTS ../partial_decompilation.results.csv 
+cp $RESULTS ../partial_decompilation.results.$ID_.csv 
