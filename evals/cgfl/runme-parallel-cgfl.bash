@@ -2,6 +2,8 @@
 NUM=$1
 DATE=$2
 
+# if we do static builds
+STATICBUILD=1
 # this is the outstanding parallel jobs
 if [[ -z $NUM ]]; then NUM=16; fi
 # this is the time of the launch or other identifier
@@ -18,6 +20,9 @@ done
 # reducing EXECUTION to just basic setup, CGFL, decomp, recomp
 #EXECUTE=( 1 1 1 1 0 1 ) => EXECUTE=( 1 1 1 1 0 0 )
 perl -p -e's/EXECUTE=\( 1 1 1 1 0 1 \)/EXECUTE=( 1 1 1 1 0 0 )/;s/^REQUIRE_NEG_TESTS_TO_FAIL=1$/REQUIRE_NEG_TESTS_TO_FAIL=0/' $PRD_BASE_DIR/tools/binrepared_e2e.bash > $MYE2E
+if (( $STATICBUILD==1 )); then 
+perl -pi -e's/-DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=OFF/-DBUILD_SHARED_LIBS=OFF -DBUILD_STATIC_LIBS=ON/g' $MYE2E
+fi
 # if you're rerunning sub-stages:
 # CHANGE 1: reducing EXECUTION to reuse basic setup, CGFL, rerun decomp and recomp
 # perl -p -e's/EXECUTE=\( 1 1 1 1 0 1 \)/EXECUTE=( 0 0 1 1 0 0 )/;s/^REQUIRE_NEG_TESTS_TO_FAIL=1$/REQUIRE_NEG_TESTS_TO_FAIL=0/' $PRD_BASE_DIR/tools/binrepared_e2e.bash > $MYE2E
@@ -33,7 +38,7 @@ fi
 OUTDIR="cgfl_recomp.$DATE"
 LOGDIR="logs.$DATE"
 
-CBs=$(cat decomp_xlist)
+#CBs=$(cat decomp_xlist)
 
 for i in $(cat cpp_xlist decomp_xlist); do 
     if (( $(egrep -c $i cpp_xlist)==0 )); then 

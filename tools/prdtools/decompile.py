@@ -144,6 +144,7 @@ if __name__ == "__main__":
 
     if args.onlyhexrays:
         ghidra_enabled=False
+    
     if args.ghidra:
         ghidra_project_init(args.prog)
         id_=os.path.basename(args.prog)
@@ -169,10 +170,6 @@ if __name__ == "__main__":
             if ret_!=0:
                 ret=-1
         sys.exit(ret)
-else:
-    r2ghidra_enabled=False
-    ghidra_enabled=False
-    sys.exit(-1)
 
             
 
