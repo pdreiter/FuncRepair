@@ -3,7 +3,7 @@ NUM=$1
 DATE=$2
 
 # if we do static builds
-STATICBUILD=1
+STATICBUILD=0
 # this is the outstanding parallel jobs
 if [[ -z $NUM ]]; then NUM=16; fi
 # this is the time of the launch or other identifier
