@@ -35,6 +35,7 @@ Our approach centers on the idea that for most (if not all) binary programs, par
 3. binary-source interfaces and binary rewriting can transform them into test-equivalent binaries, even when tools fail for full binaries;
 4. the set of decompiled binary functions provide sufficient context to enable source-level analyses and transformations, even when those methods
 only operate on source.
+
 We consider PRD a novel approach to automating binary repair that reduces the technical burden of binary repair and enables more human-centered analyses, by leveraging higher level source code as its binary repair content.
 
 Our prototype focuses on x86, System-V ABI.
