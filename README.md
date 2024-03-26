@@ -44,7 +44,7 @@ Source-level binary patching poses additional requirements, as well as analytica
 
 #### PRD Execution Flows
 Here, we depict high-level execution flows between original binary content and repair content as enabled by PRD.
-![PRD Execution flows](detailed-prd-dataflow-light.png "PRD Binary Patch Execution Flows")
+![PRD Execution flows](imgs/detailed-prd-dataflow-light.png "PRD Binary Patch Execution Flows")
 While these flows outline interaction between binary components, we give examples for these interfaces in the next subsection.
 
 #### Example automatically generated binary-source interfaces
@@ -129,8 +129,8 @@ Without any grammar or type restrictions, we evaluated baseline assumptions of d
 
 In the following table, we show that 11-57% of functions are impacted by decompiler issues even before evaluating semantics.  
 These results reiterate the need for partial analyses, while decompiler tools are imperfect.
-![Impact of Decompilation and the need for partial analyses](prd_decompilation_impact.JPG "Impact of Decompilation")
+![Impact of Decompilation and the need for partial analyses](imgs/prd_decompilation_impact.JPG "Impact of Decompilation")
 
 ### Application to Automated Binary Repair using source-level APR algorithms
 In this table, we outline our BinrePaiReD results for 30 DARPA Cyber Grand Challenge Binaries
-![BinrePaiReD CGC results for APR algorithms](binrepaired_table_4_CGC_evaluation.JPG "BinrePaiReD results for 30 DARPA CGC Challenge Binaries")
+![BinrePaiReD CGC results for APR algorithms](imgs/binrepaired_table_4_CGC_evaluation.JPG "BinrePaiReD results for 30 DARPA CGC Challenge Binaries")
