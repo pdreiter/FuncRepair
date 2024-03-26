@@ -2,7 +2,7 @@
 
 import os, sys, subprocess
 
-from prdtools import elf,ghidra_decomp
+import elf,ghidra_decomp
 
 global ghidra_enabled,r2ghidra_enabled
 
@@ -144,6 +144,7 @@ if __name__ == "__main__":
 
     if args.onlyhexrays:
         ghidra_enabled=False
+    
     if args.ghidra:
         ghidra_project_init(args.prog)
         id_=os.path.basename(args.prog)
@@ -157,13 +158,18 @@ if __name__ == "__main__":
             ghidra_decomp.ghidra_decompile(dir_,id_,bin_,f,out_=outfile,stdout=True)
         
     elif not args.indep:
-        call_hexrays(args.prog,args.funcs,args.hexrays,args.tout,args.out,args.log,args.decompdir,sys.stdout)
+        x,ret=call_hexrays(args.prog,args.funcs,args.hexrays,args.tout,args.out,args.log,args.decompdir,sys.stdout)
+        sys.exit(ret)
     else:
+        x,ret=(None,0)
         for i,fn in enumerate(args.funcs):
             target=f"{args.tout}.{i}"
             decomp_out=f"{args.out}.{i}"
             log=f"{args.log}.{i}"
-            call_hexrays(args.prog,[fn],args.hexrays,target,decomp_out,log,args.decompdir)
+            x,ret_=call_hexrays(args.prog,[fn],args.hexrays,target,decomp_out,log,args.decompdir)
+            if ret_!=0:
+                ret=-1
+        sys.exit(ret)
 else:
     r2ghidra_enabled=False
     ghidra_enabled=False

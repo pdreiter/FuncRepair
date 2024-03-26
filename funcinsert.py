@@ -308,6 +308,10 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        pop_edx=bytearray.fromhex("5a")
        mov_ecx_into_eax=bytearray.fromhex("89c8")
        mov_edx_into_eax=bytearray.fromhex("89d0")
+       if func_name=="main":
+           # in the case of dynamically linked binaries, need to make sure that ebx is loaded onto the stack
+           hex_string+=bytearray.fromhex("53")
+           
        if reg == "ecx":
            pop=pop_ecx
            altpop=pop_edx
@@ -322,7 +326,7 @@ def change_function_to_jump(binary_to_update:lief.Binary,func_name:str,
        hex_addr = int(0).to_bytes(4,byteorder='little')
        hexaddr_string.extend(hex_addr)
        hex_string.extend(hexaddr_string)
-       current_offset=len(hex_string) # save the offset of that corresponds to value in alternate register
+       current_offset=cur_offset+len(hex_string) # save the offset of that corresponds to value in alternate register
        hex_string.extend(altpop) # pop into alternate register (edx or ecx)
 
        #def generate_void_ptr_push(voidptr_address:int,cur_eip_offset:int=0,is32b:bool=True):

@@ -2,8 +2,9 @@
 
 SCRIPTDIR=$(dirname -- $(realpath -- ${BASH_SOURCE[0]}))
 CB=$1
-FUNC_NUM=$2
-DIR_ID=$3
+DIR_ID=$2
+FUNC_NUM=$3
+
 DECOMP_TARGETS=decomp_targets
 DECOMP_OUTPUT=decomp_eval$DIR_ID/out
 DECOMP_RECOMPILE=decomp_eval$DIR_ID/recomp

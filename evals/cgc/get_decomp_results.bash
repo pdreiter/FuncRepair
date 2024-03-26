@@ -1,21 +1,25 @@
 #!/bin/bash
 
-#EVALID=""
+SCRIPTDIR=$(dirname -- $(realpath -- ${BASH_SOURCE[0]}))
 EVALID=$1
+evaldir=decomp_eval$EVALID
+CBLIST=$SCRIPTDIR/decomp_xlist
+
 d=decomp_eval-results$EVALID
 mkdir -p $d
-evaldir=decomp_eval$EVALID
 logdir=$evaldir/logs
 recomplogdir=$evaldir/recomp/logs
 decomp_target=decomp_targets
-for cb in $(cat decomp_xlist); do
+for cb in $(cat $CBLIST); do
  (
     echo "CB,FUNC-ID,FUNC-NAME,PRD-STATUS"
     for LOG in $(ls $logdir/$cb.*.log); do 
        FID=$(echo $LOG | perl -p -e's/.*\.(\d+)\.log/$1/')
        recompLOG=$recomplogdir/run.$cb.$FID.log
        myfunc=$(cat $decomp_target/$cb.target_list.$FID | perl -p -e's/.*,//g');
-       if (( $(egrep -c -w 'decompilation : FAILED' $LOG)>0 )); then
+       if (( $(egrep -c -w 'decompilation : N/A' $LOG)>0 )); then
+          echo "$cb,$FID,$myfunc,invalid_function"
+       elif (( $(egrep -c -w 'decompilation : FAILED' $LOG)>0 )); then
           echo "$cb,$FID,$myfunc,failed_Decomp"
        elif (( $(egrep -c -w 'recompilation : FAILED' $LOG)>0 )); then
             echo "$cb,$FID,$myfunc,failed_Recomp"
@@ -26,7 +30,8 @@ for cb in $(cat decomp_xlist); do
        else
             echo "$cb,$FID,$myfunc,UNKNOWN"
        fi
-       >&2 echo "[Func-eval][function] $cb.$FID"
+       >&2 
+       echo "[Func-eval][function] $cb.$FID"
     done
  ) > $d/$cb.recompile.log
     echo "[Func-eval][COMPLETED] $cb"
@@ -36,6 +41,7 @@ echo "[Func-eval][COMPLETED] ALL FUNCTIONS DONE"
 (echo "CB,C,Total,Fail(decomp),Pass(decomp),Fail(recomp),Pass(recomp),Fail(test-equiv),Pass(test-equiv)";
 for i in $(ls $d/*.recompile.log); do 
   (( total=$(cat $i | wc -l )-1 )); 
+  input_errors=$(grep -c 'invalid_function' $i); 
   decomp_fail=$(grep -c 'failed_Decomp' $i); 
   recomp_fail=$(grep -c 'failed_Recomp' $i); 
   testeq_fail=$(grep -c 'failed_TestEquiv' $i); 

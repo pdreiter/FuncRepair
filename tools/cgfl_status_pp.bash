@@ -2,12 +2,20 @@
 destdir=$1
 cb=$2
 seed=$3
+GROUND_TRUTH=$4
+
+echo "Ground truth: $GROUND_TRUTH"
+if [[ -z $GROUND_TRUTH ]]; then 
+GROUND_TRUTH=$PWD
+fi
 
 for i in $cb; do 
 	if [[ ! -e $destdir/build/$i ]]; then
 	   continue
 	fi
-    if [[ ! -e patched_functions/${i}_info ]]; then 
+    echo "Expecting ground truth for ${i} in '$GROUND_TRUTH/patched_functions/${i}_info'"
+	echo "and cgfl data in $destdir/cgfl/cgfl_rank/$i/$i.top_rank.list"
+    if [[ ! -e $GROUND_TRUTH/patched_functions/${i}_info ]]; then 
 	   echo -e "\n$i : no ground truth"; continue; 
 	elif [[ ! -e $destdir/cgfl/cgfl_rank/$i/$i.top_rank.list ]]; then 
 	   echo -e "\n$i : no cgfl data"; continue; 
@@ -15,8 +23,9 @@ for i in $cb; do
 	   echo -e "\n$i : no cgfl data"; continue; 
 	fi; 
 	missing=0;cnt=0; missing_fns=""; 
+    echo "Obtaining ground truth for ${i} from $GROUND_TRUTH/patched_functions/${i}_info"
     rank_size=$(wc -w $destdir/cgfl/cgfl_rank/$i/$i.*seed_$seed.results.log | head -n 1 | awk '{print $1}')
-	for j in $(cat patched_functions/${i}_info | perl -p -e's/^[^:]+: */ /;s/\n$//' | perl -p -e's/$/\n/;s/(\sstruct|struct\s)//g'); do 
+	for j in $(cat $GROUND_TRUTH/patched_functions/${i}_info | perl -p -e's/^[^:]+: */ /;s/\n$//' | perl -p -e's/$/\n/;s/(\sstruct|struct\s)//g'); do 
        susp_file=$destdir/build/$i/susp-fn.log
        [[ ! -e $susp_file ]] && susp_file=$destdir/build/$i/susp-default.std.log
        [[ ! -e $susp_file ]] && echo -e "\n$i : no cgfl data" && break
