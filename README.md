@@ -127,9 +127,11 @@ Without any grammar or type restrictions, we evaluated baseline assumptions of d
 * RQ1. Without any restrictions, how often is decompiled code recompilable?
 * RQ2. Is decompiled code behaviorally consistent to original binary functions?
 
-In the following table, we show that 11-57% of functions are impacted by decompiler issues even before evaluating semantics.  
-These results reiterate the need for partial analyses, while decompiler tools are imperfect.
 ![Impact of Decompilation and the need for partial analyses](imgs/prd_decompilation_impact.JPG "Impact of Decompilation")
+
+* In the preceding table, we see that 11-57% of functions are impacted by decompiler issues even before evaluating semantics.  
+These results reiterate the need for partial analyses, while decompiler tools are imperfect. (RQ1)
+* We also see that, when decompilation succeeds, PRD largely generates test-equivalent binaries.
 
 ### Application to Automated Binary Repair using source-level APR algorithms
 In this table, we outline our BinrePaiReD results for 30 DARPA Cyber Grand Challenge Binaries
