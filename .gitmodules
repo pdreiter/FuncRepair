@@ -8,3 +8,6 @@
 [submodule "genprog_recompilation"]
 	path = partial_decompilation
 	url = git@github.com:capysix/genprog_recompilation.git
+[submodule "evals/rode0day"]
+	path = evals/rode0day
+	url = git@github.com:pdreiter/prd_rode0day.git

@@ -1,0 +1,15 @@
+--disable-aslr
+--program <RECOMP_SRC>.i
+--search ga
+--popsize 40
+--generations 10
+--compiler gcc
+--func-repair
+--func-repair-binary <BIN>
+--func-repair-fn-name <CHANGEME>
+--do-not-instrument <CHANGEME>
+--func-repair-insert <RECOMP_SRC>.c
+--trampoline-compiler-opts 
+--minimization
+--edit-script
+--func-repair-script ./funcinsert.py --genprog
