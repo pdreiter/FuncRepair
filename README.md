@@ -36,19 +36,34 @@ Our approach centers on the idea that for most (if not all) binary programs, par
 4. the set of decompiled binary functions provide sufficient context to enable source-level analyses and transformations, even when those methods
 only operate on source.
 
+### PRD - a binary patching framework
+
+![High-level description of Stage requirements](imgs/prd_highlevel.png "High-level description of Stage requirements")
+![Stages of PRD](imgs/prd_color.png "Stages of PRD")
+
 We consider PRD a novel approach to automating binary repair that reduces the technical burden of binary repair and enables more human-centered analyses, by leveraging higher level source code as its binary repair content.
 
 Our prototype focuses on x86, System-V ABI.
 
+#### BinrePaiReD - an automated binary repair framework
+
+We extend PRD to the task of automated binary repair by leveraging existing source-level APR tools with PRD methods and output in a framework we refer to as BinrePaiReD.
+The following diagram outlines this framework as well as how existing PRD stages are leveraged.
+![Stages of BinrePaiReD](imgs/binrepared_color.png "Stages of BinrePaiReD")
+
+
 ### Technical impact of source-level binary patching
+
 Source-level binary patching poses additional requirements, as well as analytical and engineering difficulties. Specifically, PRD must ensure that all resulting binaries retain the same executional qualities as the original, such as the ability to call and use symbols regardless of their binding state. Binary-source interfaces allow decompiled code to execute original binary code, and, by using customized detours, original binary code to execute decompiled code. Although it does not recompile the original source code, PRD does compile the source code it generates, i.e., decompiled functions and binary-source interfaces (PRD decompiled code). Since compilers do not support combining new content with non-object binary content, PRD must effectively perform linking and locating with all new content, as well as translate function callees, each accomplished through binary rewriting.
 
 #### PRD Execution Flows
+
 Here, we depict high-level execution flows between original binary content and repair content as enabled by PRD.
 ![PRD Execution flows](imgs/detailed-prd-dataflow-light.png "PRD Binary Patch Execution Flows")
 While these flows outline interaction between binary components, we give examples for these interfaces in the next subsection.
 
 #### Example automatically generated binary-source interfaces
+
 The following is an example of automatically generated binary-source interfaces for a CGC CB function `cgc_read_line` and its required symbols.
 We note that, although the decompiler-definition has been omitted, `cgc_read_line`'s prototype is declared. 
 
@@ -120,6 +135,29 @@ cgc_ssize_t  det_cgc_read_line(
     return retValue;
 }
 ```
+
+### Binary Rewriting
+
+#### Aligning detour interface with binary function 
+
+In the following excerpt from the generated binary-source interface code, we can see that the detour interface function prototype has diverged from the original binary function prototype:
+
+```c
+// Decomp : Decompiled Function Declaration
+cgc_ssize_t  cgc_read_line(int fd, char **buf);
+
+// Bin-Src(dec) : Detour Interface 
+cgc_ssize_t  det_cgc_read_line( 
+    // binary-source interface references
+    void* EBX, void* mycgc_receive, void* mycgc_calloc, void* mycgc_memcpy,
+    // parameters from Decompiled Function
+    int fd, char * * buf );
+```
+In order to manage the difference in parameters between prototypes, binary rewriting inserts instructions before jumping to the detour interface.
+These added instructions incur a byte-cost, `c`, for each additional reference, `r`, which may overrun the original function.
+For our x86 implementation, our bytecost is `c=W+X+Y*r+Z=8r+9` when `r>0`, where `W` saves callframe (1B), `X` gets and saves current offset (6B), `Y` calculates relative address for symbol with current offset (8B), `Z` pushes `ebx` (1B) and restores callframe (1B). Afterwhich, we jump to detour entry function (5B).
+
+These instructions are generated and inserted during PRD's binary rewriting phase.
 
 ## Evaluation Results
 
