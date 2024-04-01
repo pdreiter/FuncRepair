@@ -166,7 +166,24 @@ Without any grammar or type restrictions, we evaluated baseline assumptions of d
 * RQ1. Without any restrictions, how often is decompiled code recompilable?
 * RQ2. Is decompiled code behaviorally consistent to original binary functions?
 
-![Impact of Decompilation and the need for partial analyses](imgs/prd_decompilation_impact.JPG "Impact of Decompilation")
+<p>
+<img src="imgs/prd_decompilation_impact.JPG" width="50%" alt="Impact of Decompilation Results">
+<em> Impact of Decompilation Results </em>
+</p>
+
+<p>
+<img src="imgs/recompilation_results.png" width="100%" alt="Basic recompilation results for decompiler output for binary functions, organized by optimization level with total function count.">
+<em> Basic recompilation results for decompiler output for binary functions, organized by optimization level with total function count. SUCCESS
+indicates successful recompilation.ERR-TYPE have type-related errors. ERR-CONSTR have language construction errors without type errors.
+ERR-OTHER refers to other decompiler errors without type or construction </em>
+</p>
+
+
+<p>
+<img src="imgs/perfunction_recompilation_success.png" width="50%" alt="Percentage of successful recompilations per binary with optimization level.">
+<em>Percentage of successful recompilations per binary with optimization level. </em>
+</p>
+
 
 * In the preceding table, we see that 11-57% of functions are impacted by decompiler issues even before evaluating semantics.  
 These results reiterate the need for partial analyses, while decompiler tools are imperfect. (RQ1)
@@ -174,4 +191,9 @@ These results reiterate the need for partial analyses, while decompiler tools ar
 
 ### Application to Automated Binary Repair using source-level APR algorithms
 In this table, we outline our BinrePaiReD results for 30 DARPA Cyber Grand Challenge Binaries
+
+* RQ4. How effective is BinrePaiReD at mitigating vulnerabilities?
+
+
 ![BinrePaiReD CGC results for APR algorithms](imgs/binrepaired_table_4_CGC_evaluation.JPG "BinrePaiReD results for 30 DARPA CGC Challenge Binaries")
+
