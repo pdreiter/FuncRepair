@@ -168,7 +168,7 @@ Without any grammar or type restrictions, we evaluated baseline assumptions of d
 
 <p>
 <img src="imgs/prd_decompilation_impact.JPG" width="50%" alt="Impact of Decompilation Results">
-<em> Impact of Decompilation Results </em>
+<br><em> Impact of Decompilation Results </em>
 </p>
 
 <p>
@@ -181,7 +181,7 @@ ERR-OTHER refers to other decompiler errors without type or construction </em>
 
 <p>
 <img src="imgs/perfunction_recompilation_success.png" width="50%" alt="Percentage of successful recompilations per binary with optimization level.">
-<em>Percentage of successful recompilations per binary with optimization level. </em>
+<br><em>Percentage of successful recompilations per binary with optimization level. </em>
 </p>
 
 
@@ -194,6 +194,14 @@ In this table, we outline our BinrePaiReD results for 30 DARPA Cyber Grand Chall
 
 * RQ4. How effective is BinrePaiReD at mitigating vulnerabilities?
 
+<p>
+<img src="imgs/binrepaired_table_3_apr_comparison.PNG" width="50%" alt="BinrePaiReD results for 30 DARPA CGC Challenge Binaries.">
+<br><em>APR Comparison: Full-source (baseline) vs. BinrePaiReD with PRD decompiled code (PRD). We report the number of scenarios that produced a plausible mitigation (mitigated), the total number that the APR tool successfully launched its search, as well as the number which the tool completed its search within 8 hours.</em>
+</p>
 
-![BinrePaiReD CGC results for APR algorithms](imgs/binrepaired_table_4_CGC_evaluation.JPG "BinrePaiReD results for 30 DARPA CGC Challenge Binaries")
+
+<p>
+<img src="imgs/binrepaired_table_4_CGC_evaluation.JPG" alt="BinrePaiReD results for 30 DARPA CGC Challenge Binaries.">
+<em>BinrePaiReD results for 30 DARPA CGC Challenge Binaries for APR algorithms. </em>
+</p>
 
