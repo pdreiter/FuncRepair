@@ -70,6 +70,9 @@ While these flows outline interaction between binary components, we give example
 <p>
 <img src="imgs/detailed-prd-dataflow-light.png" width="70%" alt="PRD Binary Patch Execution Flows.">
 </p>
+<p>
+<img src="imgs/detailed-prd-explanation.png" width="60%" alt="Explanation of detour and the two complicated binary-source interfaces.">
+</p>
 
 
 #### Example automatically generated binary-source interfaces
@@ -170,15 +173,38 @@ For our x86 implementation, our bytecost is `c=W+X+Y*r+Z=8r+9` when `r>0`, where
 These instructions are generated and inserted during PRD's binary rewriting phase.
 
 ___
+## Datasets used in our evaluation
+
+<p>
+<img src="imgs/prd_datasets.png" width="65%" alt="Datasets used in our evaluation">
+</p>
+
+
+___
 ## Evaluation Results
+
+### Effectiveness of CGFL
+
+As our strategy is reliant upon being capable of identifying a subset that contains the vulnerable function(s), we evaluated the capability of CGFL with function-spectra with our datasets.
+
+* RQ1. Does CGFL identify function(s) relevant to the vulnerability?
+
+Our results show that the CGFL output contains at least one ground-truth function for 95 of 100 CGC-C, 8 of 10 CGC-C++, and 196 of 206 Rode0day.
+When accounting for all ground-truths, we see similar success: 74 CGC-C, 7 CGC-C++, and 196 Rode0day, which succeeds at 95% despite having few tests.
+While CGFL succeeds more than 92\% with our criteria, when CGFL failed to identify a vulnerable function, we observed three failure types that can be readily explained or mitigated.
+1. 14 binaries did not exercise any vulnerable function in any negative test.  
+2. 10 were in the first three ranks, but ties impacted their selection, a common failure in SBFL metrics.
+3. 1 buggily reimplemented a libc function.
+Although 1. cannot be addressed by SBFL or by APR, 2. can readily mitigated by adding better test content or increasing the size of K for RankAggregation. 
+Finally, 3. is a result of our simple heuristic that screens out known library functions, which could be replaced with a more sophisticated screening.
 
 ### Impact of Decompilation
 Without any grammar or type restrictions, we evaluated baseline assumptions of decompiler quality, specifically looking at the following research questions
-* RQ1. Without any restrictions, how often is decompiled code recompilable?
-* RQ2. Is decompiled code behaviorally consistent to original binary functions?
+* RQ2. Without any restrictions, how often is decompiled code recompilable?
+* RQ3. Is decompiled code behaviorally consistent to original binary functions?
 
 <p>
-<img src="imgs/prd_decompilation_impact.JPG" width="65%" alt="Impact of Decompilation Results">
+<img src="imgs/prd_decompilation_impact.png" width="65%" alt="Impact of Decompilation Results">
 <br><em> Impact of Decompilation Results </em>
 </p>
 
