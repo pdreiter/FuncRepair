@@ -51,7 +51,7 @@ for s in $(nm -D $myexe | egrep -w '[tT]' | egrep $filter | egrep $filter_name |
     if [[ -e ${s}_decomp/$myexe/${myexe}_recomp.c ]] ; then    
         cp $PRD_TOOL_DIR/templates/Makefile.prd ${s}_decomp/$myexe/; 
         cp $PRD_TOOL_DIR/templates/script.ld ${s}_decomp/$myexe/; 
-        cp $PRD_BASE_DIR/partial_decompilation/refs/defs.h defs.h; 
+        
         cp $myexe ${s}_decomp/$myexe/; 
         pushd ${s}_decomp/$myexe/; 
             if [[ ! -e ${myexe}_recomp.c-orig-noasm ]]; then 

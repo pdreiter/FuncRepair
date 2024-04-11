@@ -141,7 +141,7 @@ if (( ${EXECUTE[0]} == 1 )); then
     else 
         echo "Collecting sanity results on $cb image"
     fi
-    FAILED=$(tail -n 1 $sanity_log | egrep -c 'EXITING EARLY');
+    FAILED=$(tail -n 10 $sanity_log | egrep -c 'EXITING EARLY');
     if (( $FAILED==1 )); then
         echo "CB sanity check [early fail] : FAIL" >> $status_log && exit -1
     fi

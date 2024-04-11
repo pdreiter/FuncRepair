@@ -7,6 +7,7 @@
 #-----------------------------------------------------
 export SCRIPT=$(realpath ${BASH_SOURCE[0]})
 export PRD_BASE_DIR=$(dirname -- $SCRIPT)
+export PRD_TOOL_DIR=$(realpath -- $PRD_BASE_DIR/tools)
 export IDA_BASE_DIR=$(realpath -- $PRD_BASE_DIR/ida)
 export PART_DECOMP_DIR=$(realpath -- $PRD_BASE_DIR/partial_decompilation)
 export R_LIBS=$PRD_BASE_DIR/R_PACKAGES/lib
