@@ -36,7 +36,7 @@ For PRD decompilation support, see git submodule `partial_decompilation`
 		* requires manual updates to official tar.gz image
 		* see tools/apr/prophet/README.md
 		* all provided scripts were tested with PRD with cb-multios
-
+___
 ## Our approach to binary repair
 
 Our approach centers on the idea that for most (if not all) binary programs, partial analysis is sufficient for binary repair. The following insights guided PRD: 
@@ -48,19 +48,17 @@ only operate on source.
 
 ### PRD - a binary patching framework
 
-<p>
-<img src="imgs/prd_highlevel.png" alt="High-level description of Stage requirements" style="background-color:#FFFFFF">
-<br><em> High-level description of Stage requirements </em>
-</p>
-<p>
-<img src="imgs/prd_color.png" alt="Stages of PRD" style="background-color:#FFFFFF">
-<br><em> Stages of PRD </em>
-</p>
-
-
 We consider PRD a novel approach to automating binary repair that reduces the technical burden of binary repair and enables more human-centered analyses, by leveraging higher level source code as its binary repair content.
 
 Our prototype focuses on x86, System-V ABI.
+The following diagrams outline the description of high-level goals and the corresponding PRD stages.
+<p>
+<img src="imgs/prd_highlevel.png" width="50%" alt="High-level description of Stage requirements.">
+</p>
+<p>
+<img src="imgs/prd_color.png" width="50%" alt="Stages of PRD.">
+</p>
+
 
 #### BinrePaiReD - an automated binary repair framework
 
@@ -79,13 +77,14 @@ Source-level binary patching poses additional requirements, as well as analytica
 #### PRD Execution Flows
 
 Here, we depict high-level execution flows between original binary content and repair content as enabled by PRD.
-
+While these flows outline interaction between binary components, we give examples in high-level source code for these interfaces in the next subsection.
 <p>
-<img src="imgs/detailed-prd-dataflow-light.png" alt="PRD Binary Patch Execution Flows" style="background-color:#FFFFFF">
-<br><em> PRD Binary Patch Execution Flows </em>
+<img src="imgs/detailed-prd-dataflow-light.png" width="70%" alt="PRD Binary Patch Execution Flows." style="background-color:#FFFFFF">
+</p>
+<p>
+<img src="imgs/detailed-prd-explanation.png" width="60%" alt="Explanation of detour and the two complicated binary-source interfaces." style="background-color:#FFFFFF">
 </p>
 
-While these flows outline interaction between binary components, we give examples for these interfaces in the next subsection.
 
 #### Example automatically generated binary-source interfaces
 
@@ -191,15 +190,38 @@ For our x86 implementation, our bytecost is `c=W+X+Y*r+Z=8r+9` when `r>0`, which
 | detour   | jump to detour entry function | 1 | 5 |
 
 
-
 These instructions are generated and inserted during PRD's binary rewriting phase.
 
+___
+## Datasets used in our evaluation
+
+<p>
+<img src="imgs/prd_datasets.png" width="65%" alt="Datasets used in our evaluation">
+</p>
+
+
+___
 ## Evaluation Results
+
+### Effectiveness of CGFL
+
+As our strategy is reliant upon being capable of identifying a subset that contains the vulnerable function(s), we evaluated the capability of CGFL with function-spectra with our datasets.
+
+* RQ1. Does CGFL identify function(s) relevant to the vulnerability?
+
+Our results show that the CGFL output contains at least one ground-truth function for 95 of 100 CGC-C, 8 of 10 CGC-C++, and 196 of 206 Rode0day.
+When accounting for all ground-truths, we see similar success: 74 CGC-C, 7 CGC-C++, and 196 Rode0day, which succeeds at 95% despite having few tests.
+While CGFL succeeds more than 92\% with our criteria, when CGFL failed to identify a vulnerable function, we observed three failure types that can be readily explained or mitigated.
+1. 14 binaries did not exercise any vulnerable function in any negative test.  
+2. 10 were in the first three ranks, but ties impacted their selection, a common failure in SBFL metrics.
+3. 1 buggily reimplemented a libc function.
+Although 1. cannot be addressed by SBFL or by APR, 2. can readily mitigated by adding better test content or increasing the size of K for RankAggregation. 
+Finally, 3. is a result of our simple heuristic that screens out known library functions, which could be replaced with a more sophisticated screening.
 
 ### Impact of Decompilation
 Without any grammar or type restrictions, we evaluated baseline assumptions of decompiler quality, specifically looking at the following research questions
-* RQ1. Without any restrictions, how often is decompiled code recompilable?
-* RQ2. Is decompiled code behaviorally consistent to original binary functions?
+* RQ2. Without any restrictions, how often is decompiled code recompilable?
+* RQ3. Is decompiled code behaviorally consistent to original binary functions?
 
 <p>
 <img src="imgs/prd_decompilation_impact.JPG" width="50%" alt="Impact of Decompilation Results" style="background-color:#000000">
@@ -207,8 +229,8 @@ Without any grammar or type restrictions, we evaluated baseline assumptions of d
 </p>
 
 <p>
-<img src="imgs/recompilation_results.png" width="100%" alt="Basic recompilation results for decompiler output for binary functions, organized by optimization level with total function count.">
-<em> Basic recompilation results for decompiler output for binary functions, organized by optimization level with total function count. SUCCESS
+<img src="imgs/recompilation_results.png" width="75%" alt="Basic recompilation results for decompiler output for binary functions, organized by optimization level with total function count.">
+<br><em> Basic recompilation results for decompiler output for binary functions, organized by optimization level with total function count. SUCCESS
 indicates successful recompilation.ERR-TYPE have type-related errors. ERR-CONSTR have language construction errors without type errors.
 ERR-OTHER refers to other decompiler errors without type or construction </em>
 </p>
@@ -229,6 +251,7 @@ These results reiterate the need for partial analyses, while decompiler tools ar
 
 * RQ4. How effective is BinrePaiReD at mitigating vulnerabilities?
 
+
 #### Full-source APR vs PRD-enabled APR
 
 The following table summarizes the results of our APR evaluation comparing Full-source (baseline) to BinrePaiReD with PRD decompiled code (PRD). We report the number of scenarios that produced a plausible mitigation (mitigated), the total number that the APR tool successfully launched its search, as well as the number which the tool completed its search within 8 hours.
@@ -239,11 +262,11 @@ The following table summarizes the results of our APR evaluation comparing Full-
 
 #### Impact of Source Code content on APR tools 
 
-We investigated the impact of code content and structure on APR tools, comparing Full-source vs PRD Decompiled code vs Perfect Decompilation.
+We investigated the impact of code content and structure on APR tools, comparing Full-source (baseline) vs PRD Decompiled code( PRD) vs Perfect Decompilation (``exact''), where the decompiled function was replaced with the original source code function.
 In the following table, we outline these results for 30 DARPA Cyber Grand Challenge Binaries.
 
 <p>
-<img src="imgs/binrepaired_table_4_CGC_evaluation.JPG" alt="BinrePaiReD results for 30 DARPA CGC Challenge Binaries.">
-<em>BinrePaiReD results for 30 DARPA CGC Challenge Binaries for APR algorithms. </em>
+<img src="imgs/binrepaired_table_4_CGC_evaluation.JPG" width="120%" alt="BinrePaiReD results for 30 DARPA CGC Challenge Binaries.">
+<br><em>BinrePaiReD results for 30 DARPA CGC Challenge Binaries for APR algorithms. </em>
 </p>
 
