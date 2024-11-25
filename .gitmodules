@@ -3,11 +3,11 @@
 	url = git@github.com:trailofbits/cb-multios.git
 [submodule "genprog-code-func-repair"]
 	path = genprog-code-func-repair
-	url = git@github.com:pdreiter/genprog-code-prd.git
+	url = git@github.com:AdaptiveComputationLab/genprog-code-prd.git
 	branch = function-based-repair
 [submodule "genprog_recompilation"]
 	path = partial_decompilation
-	url = git@github.com:capysix/genprog_recompilation.git
+	url = git@github.com:AdaptiveComputationLab/partial_recompilation.git
 [submodule "evals/rode0day"]
 	path = evals/rode0day
-	url = git@github.com:pdreiter/prd_rode0day.git
+	url = git@github.com:AdaptiveComputationLab/prd_rode0day.git
